@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+# Labelled spreadsheets used by tests; keep data out of the repo
+tests/data/
