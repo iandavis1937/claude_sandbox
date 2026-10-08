@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push -u origin claude/*)",
+      "Bash(git fetch origin:*)",
+      "Bash(python3 -m py_compile:*)",
+      "Bash(python3 -m pytest:*)",
+      "Bash(python3 tests/*)"
+    ]
+  }
+}
