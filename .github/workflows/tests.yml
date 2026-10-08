@@ -1,8 +1,11 @@
 name: tests
 
 on:
-  push:
-  pull_request:
+  workflow_dispatch:
+    inputs:
+      spreadsheet:
+        description: "Path to the labelled xlsx in the repo"
+        default: "tests/data/missing_program_county_sql_338.xlsx"
 
 jobs:
   test:
