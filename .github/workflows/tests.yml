@@ -1,0 +1,32 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install dependencies
+        run: pip install pyspark pandas openpyxl
+
+      - name: Syntax check
+        run: python -m compileall -q .
+
+      # The labelled spreadsheet is not committed (tests/data/ is gitignored),
+      # so this step only runs if the file has been added to the checkout.
+      - name: Test extract_county
+        if: hashFiles('tests/data/*.xlsx') != ''
+        run: python tests/test_extract_county.py tests/data/*.xlsx
