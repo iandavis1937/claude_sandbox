@@ -23,7 +23,11 @@
 --   homeless_status_basis       which rule produced homeless_status (for auditing)
 --   is_active_ohp               open enrollment, not future-dated, inside its program's
 --                               reporting window
---   is_most_recent_enrollment   the one enrollment that represents the person, across
+--   is_most_recent_enrollment   the person's enrollment(s) with the latest activity, across
+--                               all programs; ties are not broken, so a person can have
+--                               more than one
+--   is_representative_enrollment
+--                               the one enrollment that represents the person, across
 --                               all programs (see "Choosing the representative enrollment")
 --   other_project_type / other_enrollment_id / other_project_last_activity_date /
 --   days_since_other_project_activity
@@ -41,11 +45,13 @@
 -- Remaining differences from the old views' behaviour are marked "PARITY:".
 --
 -- -----------------------------------------------------------------------------
--- Choosing the representative enrollment (is_most_recent_enrollment)
+-- Choosing the representative enrollment
 -- -----------------------------------------------------------------------------
--- One enrollment per person, chosen across ALL project types (not per program).
+-- Two person-level flags, both ranked across ALL project types (not per program):
+--   is_most_recent_enrollment     latest activity only (rule 3); ties all TRUE.
+--   is_representative_enrollment  rules 2-4; exactly one TRUE per person.
 --
--- 1. Window first, then rank. Only enrollments where is_active_ohp is TRUE are
+-- 1. Window first, then rank (both flags). Only enrollments where is_active_ohp is TRUE are
 --    ranked. A person counts if ANY open enrollment is inside its window, and is
 --    represented by the best of those. The old Services Only and Street Outreach
 --    views ranked first, which dropped a person whose newest enrollment was stale
@@ -67,8 +73,11 @@
 --    so the enrollment the person was most recently seen on represents them.
 --
 -- 4. Ties on activity date: prefer a Sheltered (or Permanently Housed)
---    enrollment over an Unsheltered one, then anything else; then the latest
---    contact; then enrollment_id DESC so results are stable between refreshes.
+--    enrollment over an Unsheltered one, then anything else; then
+--    enrollment_id DESC so results are stable between refreshes.
+--
+-- is_most_recent_enrollment applies rule 3 alone, with no tie-break: every
+-- enrollment sharing the person's latest activity date is TRUE.
 --
 -- Future-dated entries (entry_date after today) are treated as data-entry errors:
 -- they are never active and never chosen.
@@ -295,6 +304,18 @@ statused AS (
 SELECT
   s.*,
 
+  -- Enrollment(s) with the person's latest activity across all programs.
+  -- RANK, not ROW_NUMBER: ties are not broken, so every enrollment sharing the
+  -- latest activity date is TRUE.
+  CASE
+    WHEN s.is_active_ohp
+    THEN RANK() OVER (
+           PARTITION BY s.personal_id, s.is_active_ohp
+           ORDER BY s.last_activity_date DESC
+         ) = 1
+    ELSE FALSE
+  END AS is_most_recent_enrollment,
+
   -- One representative enrollment per person across all programs. See
   -- "Choosing the representative enrollment" in the header for the rules.
   CASE
@@ -306,17 +327,17 @@ SELECT
              CASE WHEN s.is_permanently_housed THEN 0 ELSE 1 END,
              -- Rule 3: latest activity.
              s.last_activity_date DESC,
-             -- Rule 4: ties prefer Sheltered/Permanently Housed, then Unsheltered.
+             -- Rule 4: ties prefer Sheltered/Permanently Housed, then Unsheltered,
+             -- then anything else; then enrollment_id for a stable result.
              CASE
                WHEN s.homeless_status IN ('Sheltered', 'Permanently Housed') THEN 0
                WHEN s.homeless_status = 'Unsheltered' THEN 1
                ELSE 2
              END,
-             s.last_contact_date DESC NULLS LAST,
              s.enrollment_id DESC
          ) = 1
     ELSE FALSE
-  END AS is_most_recent_enrollment,
+  END AS is_representative_enrollment,
 
   -- The person's most recent enrollment (open or exited) in a project type
   -- other than this row's. NULL when the person has no other project type.
@@ -344,24 +365,26 @@ FROM statused s
 --
 -- Homeless population, one row per person:
 --   mv_active_homeless:
---     WHERE is_most_recent_enrollment
+--     WHERE is_representative_enrollment
 --       AND homeless_status IN ('Sheltered', 'Unsheltered')
 --   mv_active_sheltered:
---     WHERE is_most_recent_enrollment AND homeless_status = 'Sheltered'
+--     WHERE is_representative_enrollment AND homeless_status = 'Sheltered'
 --   mv_active_unsheltered:
---     WHERE is_most_recent_enrollment AND homeless_status = 'Unsheltered'
+--     WHERE is_representative_enrollment AND homeless_status = 'Unsheltered'
 --   Permanently housed (new):
---     WHERE is_most_recent_enrollment AND homeless_status = 'Permanently Housed'
+--     WHERE is_representative_enrollment AND homeless_status = 'Permanently Housed'
+--   Use is_representative_enrollment, not is_most_recent_enrollment, for
+--   counts: is_most_recent_enrollment can be TRUE on several rows per person.
 --
 -- Per-program views:
---   is_most_recent_enrollment is chosen across all programs, so a program's
+--   is_representative_enrollment is chosen across all programs, so a program's
 --   people are split by what represents them. Pick the question:
 --   * Everyone with an active enrollment in the program (a person can appear
 --     on more than one row; count people with COUNT(DISTINCT personal_id)):
 --       WHERE project_type = '<type>' AND is_active_ohp
 --   * People whose representative enrollment is in the program (each person
 --     appears in exactly one program):
---       WHERE project_type = '<type>' AND is_most_recent_enrollment
+--       WHERE project_type = '<type>' AND is_representative_enrollment
 --
 -- Changes from the old views:
 --   * Window first, then rank (see header). Some Services Only and Street
