@@ -48,19 +48,17 @@
 -- Choosing the representative enrollment
 -- -----------------------------------------------------------------------------
 -- Two person-level flags, both ranked across ALL project types (not per program):
---   is_most_recent_enrollment     latest activity only (rule 3); ties all TRUE.
---   is_representative_enrollment  rules 2-4; exactly one TRUE per person.
+--   is_most_recent_enrollment         latest activity only (rule 3); ties all TRUE.
+--   is_representative_enrollment      rules 2-4; exactly one TRUE per person.
 --
--- 1. Window first, then rank (both flags). Only enrollments where is_active_ohp is TRUE are
+-- 1. Time window first, then rank (both flags). Only enrollments where is_active_ohp is TRUE are
 --    ranked. A person counts if ANY open enrollment is inside its window, and is
 --    represented by the best of those. The old Services Only and Street Outreach
 --    views ranked first, which dropped a person whose newest enrollment was stale
---    even when an older open enrollment had recent contact. In HMIS data the
---    stale newer enrollment is usually an intake that was never exited, so the
---    enrollment with real recent activity is the truthful one.
---    This mostly affects Street Outreach and Coordinated Entry enrollments, and
---    some Services Only enrollments: the programs where people accumulate open
---    enrollments that are never exited.
+--    even when an older open enrollment had recent contact. 
+--    This mostly affects Street Outreach and Coordinated Entry enrollments, with
+--    some Services Only enrollments affected as well. These are the programs where 
+--    people accumulate open enrollments that are never exited.
 --
 -- 2. Permanent Housing move-in wins. If the person has an in-window PH
 --    enrollment (PSH, PH - Housing Only, PH - Housing with Services or RRH) with
@@ -102,7 +100,7 @@ WITH last_contact AS (
 
 -- Every enrollment plus its project type, contact data and activity date.
 --     Note: the old CE and Day Shelter views matched on project_type_description
---     ('Coordinated Entry', 'Day Shelter'); this maps by code. Verify they agree.
+--     ('Coordinated Entry', 'Day Shelter'); this maps by code.
 base AS (
   SELECT
     a.*,
@@ -201,13 +199,7 @@ flagged AS (
 
     -- Status from the latest contact, falling back to living situation at entry
     -- (Services Only and Permanent Housing before move-in).
-    CASE
-      WHEN COALESCE(b.current_living_situation, b.living_situation_prior) IN ('101', '118', '302') THEN 'Sheltered'
-      WHEN COALESCE(b.current_living_situation, b.living_situation_prior) = '116' THEN 'Unsheltered'
-      ELSE 'Unknown'
-    END AS contact_based_status,
-
-    -- Status from living situation at entry only (CE fallback rule).
+    --
     -- Codes for living_situation_prior:
     --     Sheltered
     --     101 - Emergency shelter / hotel paid with ES voucher / Host Home shelter
@@ -216,6 +208,13 @@ flagged AS (
     --
     --     Unsheltered
     --     116 - Place not meant for habitation (vehicle, street, etc.)
+    CASE
+      WHEN COALESCE(b.current_living_situation, b.living_situation_prior) IN ('101', '118', '302') THEN 'Sheltered'
+      WHEN COALESCE(b.current_living_situation, b.living_situation_prior) = '116' THEN 'Unsheltered'
+      ELSE 'Unknown'
+    END AS contact_based_status,
+
+    -- Status from living situation at entry only (CE fallback rule).
     CASE
       WHEN b.living_situation_prior IN ('101', '118', '302') THEN 'Sheltered'
       WHEN b.living_situation_prior = '116' THEN 'Unsheltered'
@@ -231,15 +230,14 @@ statused AS (
     * EXCEPT (contact_based_status, entry_based_status),
 
     CASE
-      -- Moved into Permanent Housing: no longer homeless (HUD: RRH and other PH
-      -- clients count as homeless only until move-in).
+      -- Moved into Permanent Housing: not included in homeless count
       WHEN is_permanently_housed THEN 'Permanently Housed'
-      -- Housing programs prove status by enrollment alone.
+      -- Housing programs prove status by enrollment alone
       WHEN project_type IN ('Emergency Shelter', 'Transitional Housing', 'Safe Haven', 'Day Shelter') THEN 'Sheltered'
       WHEN project_type = 'Street Outreach' THEN 'Unsheltered'
-      -- Prevention serves people at risk of homelessness, not currently homeless.
+      -- Homelessness Prevention clients not counted as homeless, 'At-Risk' instead
       WHEN project_type = 'Homelessness Prevention' THEN 'At-Risk'
-      -- CE: a concurrent shelter stay wins, then concurrent SO, then entry living situation.
+      -- CE: a concurrent shelter stay wins, then concurrent Street Outreach, then entry living situation.
       -- PARITY: CE ignores contact records; use contact_based_status in the last branch to align with Services/PH.
       WHEN project_type = 'Coordinated Entry' AND client_is_active_in_shelter THEN 'Sheltered'
       WHEN project_type = 'Coordinated Entry' AND client_is_active_in_street_outreach THEN 'Unsheltered'
