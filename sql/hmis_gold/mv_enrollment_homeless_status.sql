@@ -1,5 +1,5 @@
 -- =============================================================================
--- mv_enrollment_homeless_status
+-- mv_homeless_status
 -- =============================================================================
 -- Enrollment-grain replacement for the per-program "active" gold views:
 --   mv_active_services, mv_active_ce_individuals, mv_active_hp_enrollment,
@@ -11,15 +11,15 @@
 --
 -- Instead of one view per program, every enrollment in admissions_enriched gets
 -- the flags those views computed implicitly:
---   program_group              normalized program (HUD 0 and 1 both -> Emergency Shelter)
+--   project_type        normalized project type (HUD 0 and 1 both -> Emergency Shelter)
 --   last_contact_date          latest non-deleted Current Living Situation record
 --   current_living_situation   living situation recorded at that contact
---   has_active_shelter_enrollment / has_active_so_enrollment
+--   client_is_active_in_shelter / client_is_active_in_street_outreach
 --                              person-level concurrency flags (used by Coordinated Entry)
 --   homeless_status            'Sheltered' | 'Unsheltered' | 'Unknown' | NULL (not classified)
 --   homeless_status_basis      which rule produced homeless_status (for auditing)
 --   is_active_ohp              open enrollment AND inside its program's reporting window
---   is_most_recent_enrollment  person's latest *active* enrollment within program_group
+--   is_most_recent_enrollment  person's latest *active* enrollment within project_type
 --   is_primary_homeless_record one counted row per person across all programs (optional)
 --
 -- Reference codes
@@ -32,12 +32,12 @@
 -- marked "PARITY:" with the one-line change that would fix it.
 -- =============================================================================
 
-CREATE OR REPLACE MATERIALIZED VIEW data_center_dev.hmis_gold.mv_enrollment_homeless_status
+CREATE OR REPLACE MATERIALIZED VIEW data_center_dev.hmis_gold.mv_homeless_status
   COMMENT 'Enrollment-grain homeless status and OHP activity flags. Replaces the per-program mv_active_* views.'
   SCHEDULE CRON '0 0 6 * * ? *' AT TIME ZONE 'America/New_York'
-  CLUSTER BY (program_group, entry_date) AS
+  CLUSTER BY (project_type, entry_date) AS
 
--- Latest contact per enrollment. Cast to DATE so every consumer sees one type
+-- Latest contact per enrollment. Cast to DATE
 -- (the old views mixed STRING and DATE for last_contact_date).
 WITH last_contact AS (
   SELECT
@@ -49,9 +49,9 @@ WITH last_contact AS (
   GROUP BY EnrollmentID
 ),
 
--- Every enrollment plus its program group and contact data.
--- Note: the old CE and Day Shelter views matched on project_type_description
--- ('Coordinated Entry', 'Day Shelter'); this maps by code. Verify they agree.
+-- Every enrollment plus its project type and contact data.
+--     Note: the old CE and Day Shelter views matched on project_type_description
+--     ('Coordinated Entry', 'Day Shelter'); this maps by code. Verify they agree.
 base AS (
   SELECT
     a.*,
@@ -65,7 +65,7 @@ base AS (
       WHEN a.project_type_code = '12' THEN 'Homelessness Prevention'
       WHEN a.project_type_code = '13' THEN 'Rapid Re-Housing'
       WHEN a.project_type_code = '14' THEN 'Coordinated Entry'
-    END AS program_group,
+    END AS project_type,
     lc.last_contact_date,
     lc.current_living_situation
   FROM data_center_dev.hmis_silver.admissions_enriched a
@@ -78,8 +78,10 @@ base AS (
 person_concurrent AS (
   SELECT
     personal_id,
-    BOOL_OR(project_type_code IN ('0', '1', '2', '8', '11')) AS has_active_shelter_enrollment,
-    BOOL_OR(project_type_code = '4') AS has_active_so_enrollment
+    BOOL_OR(project_type IN ('Emergency Shelter', 'Transitional Housing', 'Safe Haven', 'Day Shelter'))
+     AS client_is_active_in_shelter,
+    BOOL_OR(project_type = 'Street Outreach')
+     AS client_is_active_in_street_outreach
   FROM base
   WHERE is_active_enrollment = TRUE
   GROUP BY personal_id
@@ -88,8 +90,8 @@ person_concurrent AS (
 flagged AS (
   SELECT
     b.*,
-    COALESCE(pc.has_active_shelter_enrollment, FALSE) AS has_active_shelter_enrollment,
-    COALESCE(pc.has_active_so_enrollment, FALSE) AS has_active_so_enrollment,
+    COALESCE(pc.client_is_active_in_shelter, FALSE) AS client_is_active_in_shelter,
+    COALESCE(pc.client_is_active_in_street_outreach, FALSE) AS client_is_active_in_street_outreach,
 
     -- Status from the latest contact, falling back to living situation at entry
     -- (Services Only and RRH rule).
@@ -100,15 +102,23 @@ flagged AS (
     END AS contact_based_status,
 
     -- Status from living situation at entry only (CE fallback rule).
+    -- Codes for living_situation_prior:
+    --     Sheltered
+    --     101 - Emergency shelter / hotel paid with ES voucher / Host Home shelter
+    --     118 - Safe Haven
+    --     302 - Transitional Housing for homeless persons
+    -- 
+    --     Unsheltered
+    --     116 - Place not meant for habitation (vehicle, street, etc.)
     CASE
       WHEN b.living_situation_prior IN ('101', '118', '302') THEN 'Sheltered'
       WHEN b.living_situation_prior = '116' THEN 'Unsheltered'
       ELSE 'Unknown'
     END AS entry_based_status,
 
-    -- Latest open enrollment per person within the program group. Ranking all
+    -- Latest open enrollment per person within the project type. Ranking all
     -- open enrollments (not just in-window ones) matches every old view:
-    --   * Services Only and SO ranked first, then applied their window.
+    --   * Services Only and Street Outreach ranked first, then applied their window.
     --   * ES, HP, RRH and Day Shelter windowed first, but their windows only set
     --     a lower bound on entry_date, so if any enrollment is in window the
     --     latest one is too.
@@ -118,7 +128,7 @@ flagged AS (
     CASE
       WHEN b.is_active_enrollment = TRUE
       THEN ROW_NUMBER() OVER (
-             PARTITION BY b.personal_id, b.program_group, b.is_active_enrollment
+             PARTITION BY b.personal_id, b.project_type, b.is_active_enrollment
              ORDER BY b.entry_date DESC, b.enrollment_id DESC
            ) = 1
       ELSE FALSE
@@ -134,24 +144,27 @@ statused AS (
 
     CASE
       -- Housing programs prove status by enrollment alone.
-      WHEN program_group IN ('Emergency Shelter', 'Transitional Housing', 'Safe Haven', 'Day Shelter') THEN 'Sheltered'
-      WHEN program_group = 'Street Outreach' THEN 'Unsheltered'
+      WHEN project_type IN ('Emergency Shelter', 'Transitional Housing', 'Safe Haven', 'Day Shelter') THEN 'Sheltered'
+      WHEN project_type = 'Street Outreach' THEN 'Unsheltered'
+      -- Prevention serves people at risk of homelessness, not currently homeless.
+      WHEN project_type = 'Homelessness Prevention' THEN 'At-Risk'
       -- CE: a concurrent shelter stay wins, then concurrent SO, then entry living situation.
       -- PARITY: CE ignores contact records; use contact_based_status in the last branch to align with Services/RRH.
-      WHEN program_group = 'Coordinated Entry' AND has_active_shelter_enrollment THEN 'Sheltered'
-      WHEN program_group = 'Coordinated Entry' AND has_active_so_enrollment THEN 'Unsheltered'
-      WHEN program_group = 'Coordinated Entry' THEN entry_based_status
+      WHEN project_type = 'Coordinated Entry' AND client_is_active_in_shelter THEN 'Sheltered'
+      WHEN project_type = 'Coordinated Entry' AND client_is_active_in_street_outreach THEN 'Unsheltered'
+      WHEN project_type = 'Coordinated Entry' THEN entry_based_status
       -- PARITY: RRH status ignores move_in_date; HUD treats RRH clients as homeless only until move-in.
-      WHEN program_group IN ('Services Only', 'Rapid Re-Housing') THEN contact_based_status
-      -- HP (at risk, not homeless) and unmapped project types are not classified.
+      WHEN project_type IN ('Services Only', 'Rapid Re-Housing') THEN contact_based_status
+      -- Unmapped project types are not classified.
     END AS homeless_status,
 
     CASE
-      WHEN program_group IN ('Emergency Shelter', 'Transitional Housing', 'Safe Haven', 'Day Shelter', 'Street Outreach') THEN 'project_type'
-      WHEN program_group = 'Coordinated Entry' AND (has_active_shelter_enrollment OR has_active_so_enrollment) THEN 'concurrent_enrollment'
-      WHEN program_group = 'Coordinated Entry' THEN 'prior_living_situation'
-      WHEN program_group IN ('Services Only', 'Rapid Re-Housing') AND current_living_situation IS NOT NULL THEN 'current_living_situation'
-      WHEN program_group IN ('Services Only', 'Rapid Re-Housing') THEN 'prior_living_situation'
+      WHEN project_type IN ('Emergency Shelter', 'Transitional Housing', 'Safe Haven', 'Day Shelter',
+                                   'Street Outreach', 'Homelessness Prevention') THEN 'project_type'
+      WHEN project_type = 'Coordinated Entry' AND (client_is_active_in_shelter OR client_is_active_in_street_outreach) THEN 'concurrent_enrollment'
+      WHEN project_type = 'Coordinated Entry' THEN 'prior_living_situation'
+      WHEN project_type IN ('Services Only', 'Rapid Re-Housing') AND current_living_situation IS NOT NULL THEN 'current_living_situation'
+      WHEN project_type IN ('Services Only', 'Rapid Re-Housing') THEN 'prior_living_situation'
     END AS homeless_status_basis,
 
     -- Open enrollment inside its program's reporting window. Windows are copied
@@ -159,7 +172,7 @@ statused AS (
     -- PARITY: the windows are inconsistent across programs (calendar year,
     -- rolling 365 days, 24 months, 2 and 3 years, none); consider one shared window.
     is_active_enrollment = TRUE AND COALESCE(
-      CASE program_group
+      CASE project_type
         -- Entry or last contact in the current calendar year.
         WHEN 'Services Only' THEN
           YEAR(entry_date) = YEAR(CURRENT_DATE()) OR YEAR(last_contact_date) = YEAR(CURRENT_DATE())
@@ -213,38 +226,38 @@ FROM statused;
 -- =============================================================================
 -- Replacing the old views
 -- =============================================================================
--- Each old view becomes a filter on mv_enrollment_homeless_status (as a plain
+-- Each old view becomes a filter on mv_homeless_status (as a plain
 -- view, or inline in dashboards). Filters below give row-for-row parity, apart
 -- from the Day Shelter and tie-break notes above.
 --
 -- Per-program (deduplicated in the old views):
 --   Services Only, Street Outreach, HP, Day Shelter, Emergency Shelter, RRH
---     WHERE program_group = '<group>' AND is_active_ohp AND is_most_recent_enrollment
+--     WHERE project_type = '<group>' AND is_active_ohp AND is_most_recent_enrollment
 --
 -- Per-program (NOT deduplicated in the old views):
 --   Coordinated Entry, Transitional Housing, Safe Haven
---     WHERE program_group = '<group>' AND is_active_ohp
+--     WHERE project_type = '<group>' AND is_active_ohp
 --   PARITY: add AND is_most_recent_enrollment to deduplicate these too.
 --
 -- mv_active_sheltered:
 --     WHERE is_active_ohp
 --       AND homeless_status = 'Sheltered'
 --       AND (is_most_recent_enrollment
---            OR program_group IN ('Coordinated Entry', 'Transitional Housing', 'Safe Haven'))
+--            OR project_type IN ('Coordinated Entry', 'Transitional Housing', 'Safe Haven'))
 --
 -- mv_active_unsheltered:
 --     WHERE is_active_ohp
 --       AND homeless_status = 'Unsheltered'
 --       AND is_most_recent_enrollment
---       AND program_group <> 'Coordinated Entry'
+--       AND project_type <> 'Coordinated Entry'
 --   PARITY: the old view left out CE Unsheltered people; drop the last condition to include them.
 --
 -- mv_active_homeless (old behaviour, with duplicates):
 --     WHERE is_active_ohp
 --       AND homeless_status IN ('Sheltered', 'Unsheltered')
 --       AND (is_most_recent_enrollment
---            OR program_group IN ('Coordinated Entry', 'Transitional Housing', 'Safe Haven'))
---       AND NOT (program_group = 'Coordinated Entry' AND homeless_status = 'Unsheltered')
+--            OR project_type IN ('Coordinated Entry', 'Transitional Housing', 'Safe Haven'))
+--       AND NOT (project_type = 'Coordinated Entry' AND homeless_status = 'Unsheltered')
 --
 -- mv_active_homeless (one row per person):
 --     WHERE is_primary_homeless_record
@@ -252,6 +265,6 @@ FROM statused;
 -- Example parity check before switching a dashboard over (run both directions):
 --   SELECT personal_id, enrollment_id FROM data_center_dev.hmis_gold.mv_active_street_outreach
 --   EXCEPT
---   SELECT personal_id, enrollment_id FROM data_center_dev.hmis_gold.mv_enrollment_homeless_status
---   WHERE program_group = 'Street Outreach' AND is_active_ohp AND is_most_recent_enrollment;
+--   SELECT personal_id, enrollment_id FROM data_center_dev.hmis_gold.mv_homeless_status
+--   WHERE project_type = 'Street Outreach' AND is_active_ohp AND is_most_recent_enrollment;
 -- =============================================================================
