@@ -1,0 +1,22 @@
+{
+  "data": {
+    "asset": {
+      "id": "376bba44-2a54-44ba-b74b-55fe3139c23b",
+      "name": "enrollment"
+    },
+    "batch_definition": {
+      "id": "3bbb98fe-e8ec-4a20-90cb-a820b54b46df",
+      "name": "enrollment_whole_table"
+    },
+    "datasource": {
+      "id": "e9941b7f-0cd9-4a42-9718-bca1420e907d",
+      "name": "hmis_export"
+    }
+  },
+  "id": "9ed69147-8b19-4667-957c-e4b79af2b723",
+  "name": "hmis_enrollment_validation",
+  "suite": {
+    "id": "4b88adc5-8fc0-4f75-b8bc-810e916e7b60",
+    "name": "hmis_enrollment"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "data": {
+    "asset": {
+      "id": "09ba2521-99a9-4f8c-8d5b-e8b8344a8b16",
+      "name": "client"
+    },
+    "batch_definition": {
+      "id": "8ef14500-7673-4992-b9b0-690e1a3849a2",
+      "name": "client_whole_table"
+    },
+    "datasource": {
+      "id": "e9941b7f-0cd9-4a42-9718-bca1420e907d",
+      "name": "hmis_export"
+    }
+  },
+  "id": "ab15a373-e0b0-47f0-9e2d-7d6fbb93d13f",
+  "name": "hmis_client_validation",
+  "suite": {
+    "id": "573a2648-e0e1-447f-a7e1-ee4a58f40581",
+    "name": "hmis_client"
+  }
+}

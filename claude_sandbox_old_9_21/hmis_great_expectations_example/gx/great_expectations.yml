@@ -1,0 +1,124 @@
+# Welcome to Great Expectations! Always know what to expect from your data.
+#
+# Here you can define datasources, batch kwargs generators, integrations and
+# more. This file is intended to be committed to your repo. For help with
+# configuration please:
+#   - Read our docs: https://docs.greatexpectations.io/docs/guides/connecting_to_your_data/connect_to_data_overview/#2-configure-your-datasource
+#   - Join our slack channel: http://greatexpectations.io/slack
+
+# config_version refers to the syntactic version of this config file, and is used in maintaining backwards compatibility
+# It is auto-generated and usually does not need to be changed.
+config_version: 4.0
+
+# This config file supports variable substitution which enables: 1) keeping
+# secrets out of source control & 2) environment-based configuration changes
+# such as staging vs prod.
+#
+# When GX encounters substitution syntax (like `my_key: ${my_value}` or
+# `my_key: $my_value`) in the great_expectations.yml file, it will attempt
+# to replace the value of `my_key` with the value from an environment
+# variable `my_value` or a corresponding key read from this config file,
+# which is defined through the `config_variables_file_path`.
+# Environment variables take precedence over variables defined here.
+#
+# Substitution values defined here can be a simple (non-nested) value,
+# nested value such as a dictionary, or an environment variable (i.e. ${ENV_VAR})
+#
+#
+# https://docs.greatexpectations.io/docs/guides/setup/configuring_data_contexts/how_to_configure_credentials
+
+
+config_variables_file_path: uncommitted/config_variables.yml
+
+# The plugins_directory will be added to your python path for custom modules
+# used to override and extend Great Expectations.
+plugins_directory: plugins/
+
+stores:
+# Stores are configurable places to store things like Expectations, Validations
+# Data Docs, and more. These are for advanced users only - most users can simply
+# leave this section alone.
+  expectations_store:
+    class_name: ExpectationsStore
+    store_backend:
+      class_name: TupleFilesystemStoreBackend
+      base_directory: expectations/
+
+  validation_results_store:
+    class_name: ValidationResultsStore
+    store_backend:
+      class_name: TupleFilesystemStoreBackend
+      base_directory: uncommitted/validations/
+
+  checkpoint_store:
+    class_name: CheckpointStore
+    store_backend:
+      class_name: TupleFilesystemStoreBackend
+      suppress_store_backend_id: true
+      base_directory: checkpoints/
+
+  validation_definition_store:
+    class_name: ValidationDefinitionStore
+    store_backend:
+      class_name: TupleFilesystemStoreBackend
+      base_directory: validation_definitions/
+
+expectations_store_name: expectations_store
+validation_results_store_name: validation_results_store
+checkpoint_store_name: checkpoint_store
+
+data_docs_sites:
+  # Data Docs make it simple to visualize data quality in your project. These
+  # include Expectations, Validations & Profiles. The are built for all
+  # Datasources from JSON artifacts in the local repo including validations &
+  # profiles from the uncommitted directory. Read more at https://docs.greatexpectations.io/docs/terms/data_docs
+  local_site:
+    class_name: SiteBuilder
+    show_how_to_buttons: true
+    store_backend:
+      class_name: TupleFilesystemStoreBackend
+      base_directory: uncommitted/data_docs/local_site/
+    site_index_builder:
+      class_name: DefaultSiteIndexBuilder
+fluent_datasources:
+  hmis_export:
+    type: pandas
+    id: e9941b7f-0cd9-4a42-9718-bca1420e907d
+    assets:
+      client:
+        type: dataframe
+        id: 09ba2521-99a9-4f8c-8d5b-e8b8344a8b16
+        batch_metadata: {}
+        batch_definitions:
+          client_whole_table:
+            id: 8ef14500-7673-4992-b9b0-690e1a3849a2
+            partitioner:
+      enrollment:
+        type: dataframe
+        id: 376bba44-2a54-44ba-b74b-55fe3139c23b
+        batch_metadata: {}
+        batch_definitions:
+          enrollment_whole_table:
+            id: 3bbb98fe-e8ec-4a20-90cb-a820b54b46df
+            partitioner:
+      household:
+        type: dataframe
+        id: efeb0f30-813d-44b4-91c3-a97fff134a3a
+        batch_metadata: {}
+        batch_definitions:
+          household_whole_table:
+            id: 33b5c391-780b-474d-846b-48e8b9d147a6
+            partitioner:
+      exit:
+        type: dataframe
+        id: eb046a7a-054c-435d-b2d3-d7f622046f45
+        batch_metadata: {}
+        batch_definitions:
+          exit_whole_table:
+            id: 8b628df2-cad1-49db-b51c-224b380e0013
+            partitioner:
+analytics_enabled:
+data_context_id: 23892b7f-2077-460b-a2a1-920f0d31a15a
+progress_bars:
+  globally: false
+  metric_calculations: false

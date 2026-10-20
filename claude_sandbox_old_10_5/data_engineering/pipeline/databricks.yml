@@ -1,0 +1,61 @@
+# Databricks Asset Bundle: deploys the pipeline and a scheduled job that runs it.
+# Starting point, not tested against your workspace. Fill in the values marked TODO.
+# Deploy:  databricks bundle validate -t dev
+#          databricks bundle deploy   -t dev
+#          databricks bundle run hmis_dashboard_refresh -t dev
+
+bundle:
+  name: hmis_dashboard
+
+variables:
+  catalog:
+    description: Default catalog the pipeline reads from and publishes to
+  alert_email:
+    description: Address that receives failure emails
+
+resources:
+  pipelines:
+    hmis_dashboard_pipeline:
+      name: hmis_dashboard_${bundle.target}
+      catalog: ${var.catalog}
+      schema: silver            # default schema; tables below use two-part names
+      serverless: true
+      libraries:
+        - file:
+            path: ./hmis_dashboard_pipeline.sql
+
+  jobs:
+    hmis_dashboard_refresh:
+      name: hmis_dashboard_refresh_${bundle.target}
+      schedule:
+        quartz_cron_expression: "0 30 5 * * ?"   # 05:30 daily; TODO: set after upstream loads finish
+        timezone_id: America/New_York
+        pause_status: PAUSED                     # unpause deliberately after the parity check passes
+      email_notifications:
+        on_failure:
+          - ${var.alert_email}
+      tasks:
+        - task_key: run_pipeline
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.hmis_dashboard_pipeline.id}
+        # Next task (see PIPELINE_NOTES.md, "Power BI"): refresh the Power BI
+        # semantic model only after run_pipeline succeeds.
+
+targets:
+  dev:
+    mode: development
+    default: true
+    variables:
+      catalog: example_catalog
+      alert_email: user@example.com
+    workspace:
+      host: https://TODO-dev-workspace.azuredatabricks.net
+
+  prod:
+    mode: production
+    variables:
+      catalog: TODO_prod_catalog
+      alert_email: TODO_team_distribution_list
+    workspace:
+      host: https://TODO-prod-workspace.azuredatabricks.net
+      root_path: /Workspace/Shared/.bundle/${bundle.name}/${bundle.target}

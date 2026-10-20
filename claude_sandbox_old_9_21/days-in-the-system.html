@@ -1,0 +1,464 @@
+<title>Days in the System</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+  :root{
+    --bg:#F4F5F3;
+    --surface:#FFFFFF;
+    --surface-2:#EDEFEB;
+    --ink:#1A1F26;
+    --ink-2:#4E5761;
+    --ink-3:#7A838D;
+    --rule:#D9DCD6;
+    --rule-strong:#BFC4BC;
+    --accent:#8A6417;
+    --accent-soft:#F0E6D0;
+    --ok:#2F6B5E;
+    --ok-soft:#DCEAE5;
+    --partial:#8A6417;
+    --partial-soft:#F0E6D0;
+    --none:#8C4F45;
+    --none-soft:#F2E0DC;
+    --bar:#8A6417;
+    --bar-track:#E3E5DF;
+    --shadow:0 1px 2px rgba(26,31,38,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#12161A; --surface:#1A2026; --surface-2:#222A31;
+      --ink:#E7EAEC; --ink-2:#AEB6BD; --ink-3:#828C95;
+      --rule:#2C353D; --rule-strong:#3D4750;
+      --accent:#D6AC5C; --accent-soft:#2E2717;
+      --ok:#78C0AE; --ok-soft:#182C28;
+      --partial:#D6AC5C; --partial-soft:#2E2717;
+      --none:#D69185; --none-soft:#2E1E1B;
+      --bar:#D6AC5C; --bar-track:#2A333A;
+      --shadow:0 1px 2px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#12161A; --surface:#1A2026; --surface-2:#222A31;
+    --ink:#E7EAEC; --ink-2:#AEB6BD; --ink-3:#828C95;
+    --rule:#2C353D; --rule-strong:#3D4750;
+    --accent:#D6AC5C; --accent-soft:#2E2717;
+    --ok:#78C0AE; --ok-soft:#182C28;
+    --partial:#D6AC5C; --partial-soft:#2E2717;
+    --none:#D69185; --none-soft:#2E1E1B;
+    --bar:#D6AC5C; --bar-track:#2A333A;
+    --shadow:0 1px 2px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--bg);color:var(--ink);
+    font-family:"Source Serif 4",Georgia,"Times New Roman",serif;
+    font-size:17px;line-height:1.62;margin:0;
+    padding-inline:20px;padding-block:0;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:880px;margin:0 auto;padding-block:56px 88px;display:flex;flex-direction:column;gap:52px}
+
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+    font-size:11.5px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink-3);margin:0;
+  }
+
+  header h1{
+    font-family:Archivo,"Helvetica Neue",Arial,sans-serif;
+    font-weight:700;font-size:clamp(2.1rem,6vw,3.1rem);line-height:1.04;
+    letter-spacing:-.026em;margin:.36em 0 0;text-wrap:balance;
+  }
+  header .standfirst{font-size:1.13rem;color:var(--ink-2);margin:.9rem 0 0;max-width:60ch}
+  header .meta{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;color:var(--ink-3);
+    margin:1.6rem 0 0;padding-top:1rem;border-top:1px solid var(--rule);
+    display:flex;flex-wrap:wrap;gap:6px 22px;
+  }
+
+  section{display:flex;flex-direction:column;gap:18px}
+  h2{
+    font-family:Archivo,"Helvetica Neue",Arial,sans-serif;font-weight:600;
+    font-size:1.5rem;letter-spacing:-.014em;line-height:1.2;margin:0;text-wrap:balance;
+  }
+  h3{
+    font-family:Archivo,"Helvetica Neue",Arial,sans-serif;font-weight:600;
+    font-size:1.06rem;letter-spacing:-.005em;margin:0;color:var(--ink);
+  }
+  p{margin:0;max-width:68ch}
+  a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+  a:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
+  strong{font-weight:600}
+
+  .lede{
+    background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--accent);
+    padding:20px 22px;display:flex;flex-direction:column;gap:12px;box-shadow:var(--shadow);
+  }
+  .lede p{max-width:64ch}
+
+  ul{margin:0;padding-left:1.15em;max-width:68ch;display:flex;flex-direction:column;gap:9px}
+  li::marker{color:var(--ink-3)}
+
+  .tablewrap{overflow-x:auto;border:1px solid var(--rule);background:var(--surface);box-shadow:var(--shadow)}
+  table{border-collapse:collapse;width:100%;min-width:600px;font-size:14.5px}
+  caption{
+    text-align:left;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11.5px;
+    letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);padding:14px 16px 0;
+  }
+  th,td{text-align:left;padding:10px 14px;vertical-align:top;border-bottom:1px solid var(--rule)}
+  thead th{
+    font-family:Archivo,sans-serif;font-size:11.5px;font-weight:600;letter-spacing:.05em;
+    text-transform:uppercase;color:var(--ink-2);border-bottom:1px solid var(--rule-strong);
+    background:var(--surface-2);
+  }
+  tbody tr:last-child td{border-bottom:none}
+  td.n,th.n{text-align:right;font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-variant-numeric:tabular-nums;font-size:13.5px}
+  .num{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+  td.type{font-family:Archivo,sans-serif;font-weight:600;font-size:13.5px}
+  td.type span{display:block;font-family:"IBM Plex Mono",monospace;font-weight:400;
+    font-size:11px;color:var(--ink-3);letter-spacing:.04em;margin-top:2px}
+  td.derived{color:var(--ink-3)}
+  tr.total td{background:var(--surface-2);font-weight:600}
+
+  .tag{
+    display:inline-block;font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:10.5px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;
+    padding:2px 7px;border-radius:2px;white-space:nowrap;
+  }
+  .tag-ok{background:var(--ok-soft);color:var(--ok)}
+  .tag-partial{background:var(--partial-soft);color:var(--partial)}
+  .tag-none{background:var(--none-soft);color:var(--none)}
+
+  .bar{display:block;height:6px;background:var(--bar-track);margin-top:5px;max-width:150px}
+  .bar i{display:block;height:100%;background:var(--bar)}
+
+  .key{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;font-size:13.5px;color:var(--ink-2)}
+  .key span.k{display:inline-flex;align-items:center;gap:7px}
+
+  .callout{
+    background:var(--surface-2);border:1px solid var(--rule);padding:18px 20px;
+    display:flex;flex-direction:column;gap:10px;
+  }
+  .callout .eyebrow{color:var(--accent)}
+  .callout.warn{border-left:3px solid var(--none)}
+  .callout.warn .eyebrow{color:var(--none)}
+
+  .rulegrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1px;
+    background:var(--rule);border:1px solid var(--rule)}
+  .rulegrid > div{background:var(--surface);padding:16px 18px;display:flex;flex-direction:column;gap:7px}
+  .rulegrid .n{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--accent);letter-spacing:.06em}
+  .rulegrid p{font-size:14.5px;color:var(--ink-2)}
+
+  .note{font-size:13.5px;color:var(--ink-3);max-width:74ch}
+
+  footer{border-top:1px solid var(--rule);padding-top:26px;display:flex;flex-direction:column;gap:14px}
+  footer ol{margin:0;padding-left:1.4em;font-size:14px;color:var(--ink-2);display:flex;flex-direction:column;gap:7px}
+  footer li{max-width:70ch}
+
+  @media (max-width:520px){
+    body{font-size:16px}
+    .wrap{padding-block:40px 64px;gap:42px}
+  }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">Research briefing · HMIS &amp; HUD reporting</p>
+    <h1>Days in the System</h1>
+    <p class="standfirst">National figures on time spent in each HUD project type, what happens between enrollments, and how often clients use more than one program in a year.</p>
+    <div class="meta">
+      <span>Compiled 10 Sep 2026</span>
+      <span>2022 AHAR Part 2 · CoC SPM data FY2019–FY2024</span>
+      <span>Figures computed from the source files</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="lede">
+      <p class="eyebrow">Three things to know before the tables</p>
+      <p><strong>HUD does not publish a mean or median length of stay by project type.</strong> The AHAR Part 2 reports duration only as a bucketed distribution (≤7 days, 1 week–1 month, and so on). The only national figure expressed in days is SPM Measure 1, and that is a <em>person-level</em> count of cumulative homelessness across ES/SH/TH combined — not a project-level stay.</p>
+      <p><strong>Nothing published measures the gap between one enrollment and the next.</strong> The closest national proxy is SPM Measure 2, returns to homelessness at 6, 12 and 24 months after an exit, broken out by the project type exited.</p>
+      <p><strong>Overlapping enrollments are published — as annual co-occurrence, not simultaneity.</strong> The AHAR reports which combinations of project types a household touched during the year, which is the closest thing to your question and is genuinely useful. Same-day overlap is treated by HUD as a data quality error, not a measured phenomenon.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Length of stay in shelter programs, FY2022</h2>
+    <p>"Shelter programs" here means emergency shelter, transitional housing and safe haven combined — the AHAR does not separate them in its length-of-stay exhibits. Duration is the <em>aggregated</em> time a household spent across any of those programs during the reporting year, so a client who moved between two shelters appears once with their total.</p>
+
+    <div class="tablewrap">
+      <table>
+        <caption>Share of households by total time in ES / TH / SH, FY2022</caption>
+        <thead>
+          <tr>
+            <th>Time in shelter</th>
+            <th class="n">Adult-only</th>
+            <th class="n">Families</th>
+            <th class="n">Youth</th>
+            <th class="n">Veterans</th>
+            <th class="n">Chronic</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>7 days or less</td><td class="n">26%</td><td class="n">15%</td><td class="n">36%</td><td class="n">16%</td><td class="n">15%</td></tr>
+          <tr><td>1 week to 1 month</td><td class="n">21%</td><td class="n">18%</td><td class="n">23%</td><td class="n">—</td><td class="n">—</td></tr>
+          <tr><td>1 to 3 months</td><td class="n">21%</td><td class="n derived">24%</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
+          <tr><td>3 to 6 months</td><td class="n derived">13%</td><td class="n">18%</td><td class="n">—</td><td class="n">—</td><td class="n derived">16%</td></tr>
+          <tr><td>6 months to 1 year</td><td class="n">10%</td><td class="n derived">14%</td><td class="n">—</td><td class="n derived">15%</td><td class="n">15%</td></tr>
+          <tr><td>1 year or more</td><td class="n">9%</td><td class="n">11%</td><td class="n">4%</td><td class="n">9%</td><td class="n">15%</td></tr>
+          <tr class="total"><td>≤ 90 days (cumulative)</td><td class="n">68%</td><td class="n">75%</td><td class="n">—</td><td class="n">—</td><td class="n">54%</td></tr>
+          <tr class="total"><td>&gt; 180 days (cumulative)</td><td class="n">19%</td><td class="n">25%</td><td class="n">—</td><td class="n">24%</td><td class="n">30%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Greyed cells are derived by subtraction from the report's stated cumulative shares; all other values are stated directly in the 2022 AHAR Part 2 narrative (Exhibits 2.10, 3.11, 4.10, 5.9, 6.10). Em-dashes mark buckets the report charts but does not name in text. "Chronic" is adult-only households with chronic patterns of homelessness.</p>
+
+    <div class="callout">
+      <p class="eyebrow">The shape of it</p>
+      <p>Adult-only households are twice as likely as families to leave within a week (26% vs 15%), but families are more likely to be there past six months (25% vs 19%). Unaccompanied youth are the shortest stayers by a wide margin — <strong>59% are out within a month</strong> and only 4% stay a year or more. Chronically homeless adult-only households are the longest — <strong>30% past 180 days</strong>, and 15% past a year. Veterans leave quickly less often than the general adult-only population (16% vs 26% within a week), a pattern consistent with structured VA-linked programs rather than night-by-night shelter.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Rapid re-housing and PSH, FY2022</h2>
+    <p>RRH duration is measured as aggregated time using an RRH subsidy during the year; PSH is measured as total tenure to date, not time within the year.</p>
+
+    <div class="tablewrap">
+      <table>
+        <caption>Length of RRH subsidy use vs. length of PSH tenure, FY2022</caption>
+        <thead>
+          <tr><th>Duration</th><th class="n">RRH subsidy</th><th></th><th>PSH tenure</th><th class="n">Households</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Less than 1 week</td><td class="n">12%</td><td><span class="bar"><i style="width:24%"></i></span></td><td>3 months or less</td><td class="n">3%</td></tr>
+          <tr><td>3 months or less (cumulative)</td><td class="n">34%</td><td><span class="bar"><i style="width:68%"></i></span></td><td>Less than 1 year</td><td class="n">16%</td></tr>
+          <tr><td>3 to 6 months</td><td class="n derived">17%</td><td><span class="bar"><i style="width:34%"></i></span></td><td>More than 3 years</td><td class="n">58%</td></tr>
+          <tr><td>6 months to 1 year</td><td class="n">26%</td><td><span class="bar"><i style="width:52%"></i></span></td><td>5 years or more</td><td class="n">39%</td></tr>
+          <tr><td>More than 1 year</td><td class="n">23%</td><td><span class="bar"><i style="width:46%"></i></span></td><td></td><td class="n"></td></tr>
+          <tr><td>2 years or more</td><td class="n">4%</td><td><span class="bar"><i style="width:8%"></i></span></td><td></td><td class="n"></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>RRH stays lengthened sharply through the pandemic and had not come back: the share of households using RRH for <strong>three months or less fell from 44% in 2019 to 34% in 2022</strong>, while the share using it for 18 months or longer <strong>rose from under 5% to over 10%</strong>. PSH moved the same direction — households in PSH five years or more went from 30% to 39% of the PSH population between 2019 and 2022.</p>
+  </section>
+
+  <section>
+    <h2>Length of time homeless: the one figure in days</h2>
+    <p>SPM Measure 1 counts each person's cumulative days in ES and safe haven (metric 1a), or those plus transitional housing (1b), looking back 365 days from their exit. HUD publishes it per CoC. The figures below are computed from HUD's <em>CoC System Performance Measures Data</em> workbook, weighted by each CoC's HMIS count so that large systems carry their real share.</p>
+
+    <div class="tablewrap">
+      <table>
+        <caption>National length of time homeless, size-weighted across CoCs (days)</caption>
+        <thead>
+          <tr><th>Fiscal year</th><th class="n">ES + SH, avg</th><th class="n">ES + SH + TH, avg</th><th class="n">Median CoC's median</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>FY2019</td><td class="n">98</td><td class="n">126</td><td class="n">40</td></tr>
+          <tr><td>FY2020</td><td class="n">104</td><td class="n">133</td><td class="n">49</td></tr>
+          <tr><td>FY2021</td><td class="n">109</td><td class="n">135</td><td class="n">45</td></tr>
+          <tr><td>FY2022</td><td class="n">118</td><td class="n">137</td><td class="n">46</td></tr>
+          <tr><td>FY2023</td><td class="n">121</td><td class="n">138</td><td class="n">47</td></tr>
+          <tr class="total"><td>FY2024</td><td class="n">139</td><td class="n">153</td><td class="n">50</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>The gap between the two right-hand columns is the story: the <strong>typical CoC</strong> has a median around 50 days, while the <strong>weighted national average</strong> is three times that, because the large coastal systems are far above the middle. For FY2024, New York City reports a 229-day median and Boston 148, against 47 for Houston and 59 for Atlanta. Any national average you cite is really a statement about a handful of big systems.</p>
+    <p class="note">Size weights use each CoC's reported HMIS count. HUD publishes no person counts for Measure 1, so this is a size-weighted approximation of the national average rather than a true person-weighted one. Zero and blank CoCs excluded; 382–390 CoCs per year.</p>
+  </section>
+
+  <section>
+    <h2>Between enrollments</h2>
+    <p>No national dataset reports days elapsed between an exit from one project type and an entry into the next. What exists is the return rate, by the project type exited — the published measure that comes closest to your question.</p>
+
+    <div class="tablewrap">
+      <table>
+        <caption>Returns to homelessness after exit, FY2023 (person-weighted national)</caption>
+        <thead>
+          <tr><th>Exited from</th><th class="n">Persons exited</th><th class="n">Returned ≤6 mo</th><th class="n">≤12 mo</th><th class="n">≤24 mo</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="type">Emergency Shelter<span>Type 1</span></td><td class="n">202,657</td><td class="n">10.4%</td><td class="n">15.3%</td><td class="n">21.9%</td></tr>
+          <tr><td class="type">Street Outreach<span>Type 4</span></td><td class="n">27,952</td><td class="n">10.3%</td><td class="n">15.4%</td><td class="n">22.5%</td></tr>
+          <tr><td class="type">Safe Haven<span>Type 8</span></td><td class="n">1,126</td><td class="n">9.6%</td><td class="n">16.4%</td><td class="n">23.8%</td></tr>
+          <tr><td class="type">Transitional Housing<span>Type 2</span></td><td class="n">29,659</td><td class="n">7.3%</td><td class="n">11.6%</td><td class="n">17.2%</td></tr>
+          <tr><td class="type">Permanent Housing<span>Types 3, 9, 10, 13</span></td><td class="n">158,729</td><td class="n">4.3%</td><td class="n">7.7%</td><td class="n">13.1%</td></tr>
+          <tr class="total"><td class="type">All project types</td><td class="n">420,123</td><td class="n">7.9%</td><td class="n">12.2%</td><td class="n">18.3%</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Roughly <strong>half of all two-year returns happen within the first six months</strong> across every exit type — the risk is heavily front-loaded, which is the practical answer to "how long until they come back." Exits from permanent housing are about half as likely to produce a return as exits from shelter, at every horizon.</p>
+
+    <div class="callout warn">
+      <p class="eyebrow">Data quality warning on FY2024</p>
+      <p>In the FY2024 sheet, the transitional-housing return block is broken: <strong>231 of 385 CoCs report non-zero returns at 6 months but zero at 12 and 24 months</strong>, which is arithmetically impossible since the longer cohorts are supposed to include the shorter ones. FY2019–FY2023 pass this check cleanly for every project type. Use FY2023 as the latest usable year for Measure 2 transitional housing, and treat published FY2024 TH return rates as unreliable.</p>
+    </div>
+
+    <p>For the timing rules themselves, the two national reports do not agree, which matters if you are reconciling your own gaps against a published figure.</p>
+
+    <div class="rulegrid">
+      <div>
+        <span class="n">LSA / Stella</span>
+        <h3>Seven-day rule</h3>
+        <p>Two dates of homelessness are continuous as long as they are separated by <strong>fewer than seven days</strong>. Sub-week gaps don't split an episode.</p>
+      </div>
+      <div>
+        <span class="n">SPM</span>
+        <h3>Contiguous only</h3>
+        <p>Only consecutive dates count as one episode. <strong>A single day's gap is a break.</strong> LSA day counts therefore reach further back than SPM ones for the same client.</p>
+      </div>
+      <div>
+        <span class="n">Chronic definition</span>
+        <h3>Seven consecutive nights</h3>
+        <p>A break between occasions counts only if it includes <strong>at least 7 consecutive nights</strong> not homeless — a third seven-day threshold, with its own rules.</p>
+      </div>
+      <div>
+        <span class="n">AHAR returns</span>
+        <h3>Fourteen days</h3>
+        <p>The AHAR counts a "return" only after <strong>14 days</strong> with no homeless services, within a two-year window — different again from both of the above.</p>
+      </div>
+      <div>
+        <span class="n">LSA / Stella</span>
+        <h3>Duration thresholds</h3>
+        <p><strong>Longstayer</strong> at 180+ cumulative days, <strong>long-term homeless</strong> at 365+. Use these if you need standard buckets.</p>
+      </div>
+      <div>
+        <span class="n">LSA vs SPM</span>
+        <h3>Unit of analysis</h3>
+        <p>LSA follows <strong>households</strong> via the head of household and breaks out household type; SPM counts <strong>all persons served</strong> with no such breakdowns.</p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <p class="eyebrow">One structural mismatch to plan around</p>
+      <p>HUD's "system pathway" in Stella is <strong>not a sequence</strong> — it is the distinct <em>combination</em> of project types a household was enrolled in during the period, so ES→TH→RRH and RRH→TH→ES land in the same bucket. Ordered A→B transitions with a mean gap on each edge are your own construct, and no published national comparator exists for them.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>How often clients use more than one project type</h2>
+    <p>This is the closest published answer to the overlapping-enrollment question, and it is real national data. The caveat is in the wording: these exhibits report <strong>co-occurrence within a single reporting year</strong>, not same-day overlap. A household counted under "shelter and RRH" may have moved from one to the other rather than held both at once.</p>
+
+    <div class="tablewrap">
+      <table>
+        <caption>Program combinations used during FY2022</caption>
+        <thead>
+          <tr><th>Population and combination</th><th class="n">All</th><th class="n">Adult-only</th><th class="n">Families</th></tr>
+        </thead>
+        <tbody>
+          <tr><td colspan="4" style="background:var(--surface-2);font-family:Archivo,sans-serif;font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2)">Households who used shelter programs</td></tr>
+          <tr><td>Shelter programs only</td><td class="n">92.8%</td><td class="n">93.3%</td><td class="n">88.3%</td></tr>
+          <tr><td>Shelter + RRH</td><td class="n">4.9%</td><td class="n">4.2%</td><td class="n">10.2%</td></tr>
+          <tr><td>Shelter + PSH</td><td class="n">2.0%</td><td class="n">2.1%</td><td class="n">1.3%</td></tr>
+          <tr><td>All three</td><td class="n">—</td><td class="n">0.3%</td><td class="n">0.2%</td></tr>
+
+          <tr><td colspan="4" style="background:var(--surface-2);font-family:Archivo,sans-serif;font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2)">Households who used RRH</td></tr>
+          <tr><td>RRH only</td><td class="n">69.9%</td><td class="n">65.6%</td><td class="n">80.7%</td></tr>
+          <tr><td>RRH + shelter programs</td><td class="n">24.6%</td><td class="n">27.5%</td><td class="n">17.5%</td></tr>
+          <tr><td>RRH + PSH</td><td class="n">4.0%</td><td class="n">5.0%</td><td class="n">1.4%</td></tr>
+          <tr><td>RRH + shelter + PSH</td><td class="n">1.5%</td><td class="n">1.9%</td><td class="n">0.4%</td></tr>
+
+          <tr><td colspan="4" style="background:var(--surface-2);font-family:Archivo,sans-serif;font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2)">Households who lived in PSH</td></tr>
+          <tr><td>PSH only</td><td class="n">90.0%</td><td class="n">89.7%</td><td class="n">92.8%</td></tr>
+          <tr><td>PSH + shelter programs</td><td class="n">6.4%</td><td class="n">6.8%</td><td class="n">3.8%</td></tr>
+          <tr><td>PSH + RRH</td><td class="n">2.7%</td><td class="n">2.6%</td><td class="n">2.8%</td></tr>
+          <tr><td>PSH + shelter + RRH</td><td class="n">0.9%</td><td class="n">0.9%</td><td class="n">0.6%</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>The asymmetry is worth noticing. Looked at from the shelter side, multi-program use looks rare — <strong>93% of shelter households touched nothing else</strong>. Looked at from the RRH side it is the norm for a large minority: <strong>a quarter of RRH households also used a shelter program that year, rising to 28% for adult-only households</strong>. Families are the mirror image, far more likely to pair shelter with RRH (10% vs 4%) but far less likely to combine RRH with anything once housed (81% used RRH alone).</p>
+
+    <p>And PSH is where the entry pathway shows: 6.4% of PSH households also used shelter in the same year, which is largely people moving <em>into</em> PSH rather than cycling.</p>
+  </section>
+
+  <section>
+    <h2>Same-day overlaps, and what HUD says about them</h2>
+    <p>Simultaneous enrollment is treated as a data quality problem rather than something to be measured. The LSA applies a <strong>1% tolerance threshold</strong> to allow for genuinely rare legitimate cases and expects the rest to be cleaned before submission.</p>
+
+    <div class="tablewrap">
+      <table>
+        <caption>How concurrent enrollments are treated</caption>
+        <thead><tr><th>Overlap</th><th>Treatment</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="type">Same project, same person</td>
+            <td><span class="tag tag-none">Never permitted</span></td>
+            <td>An entry-to-exit overlap within one ProjectID is invalid for every project type, no exceptions.</td>
+          </tr>
+          <tr>
+            <td class="type">ES ↔ SH ↔ TH</td>
+            <td><span class="tag tag-none">Error</span></td>
+            <td>"In general, we do not expect overlapping days in project among and between the following project types: Emergency shelter, Safe haven, or Transitional housing." Includes entry/exit stays overlapping night-by-night bed nights elsewhere.</td>
+          </tr>
+          <tr>
+            <td class="type">Residential ↔ PH after move-in</td>
+            <td><span class="tag tag-partial">≈99% error</span></td>
+            <td>A shelter enrollment left open past a housing move-in date. The classic cleaning target.</td>
+          </tr>
+          <tr>
+            <td class="type">PH ↔ PH</td>
+            <td><span class="tag tag-partial">≈99% error</span></td>
+            <td>Overlapping move-in dates across two PSH projects, or RRH and PSH held simultaneously.</td>
+          </tr>
+          <tr>
+            <td class="type">CE ↔ residential</td>
+            <td><span class="tag tag-partial">Undefined</span></td>
+            <td><strong>The real gap.</strong> Neither the LSA data quality guidance nor the CoC HMIS Manual addresses CE running concurrently with ES/TH/RRH/PSH. HUD describes CE as "a collaborative and community-wide process and not necessarily represented by a single project," and defines no standard CE start or exit. CE contributes no homeless days, so an overlap causes no double-counting — which is why most implementations permit it and HUD never had to rule. Practice varies by CoC; no national benchmark exists.</td>
+          </tr>
+          <tr>
+            <td class="type">HP ↔ anything</td>
+            <td><span class="tag tag-partial">Undefined</span></td>
+            <td>Also unaddressed, and for the same reason: HP days are not homeless days.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Project types with no national duration data at all</h2>
+    <div class="tablewrap">
+      <table>
+        <caption>Coverage gaps</caption>
+        <thead><tr><th>Project type</th><th>Status</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td class="type">Coordinated Entry<span>Type 14</span></td><td><span class="tag tag-none">Nothing</span></td><td>No standard start/exit definition, so no comparable duration. Excluded from LSA day counts entirely.</td></tr>
+          <tr><td class="type">Homelessness Prevention<span>Type 12</span></td><td><span class="tag tag-none">Nothing</span></td><td>HP days never count as homeless days. As of April 2025 there are no CoC-funded HP projects; ESG and state-funded HP sit outside both national tables.</td></tr>
+          <tr><td class="type">Street Outreach<span>Type 4</span></td><td><span class="tag tag-partial">Returns only</span></td><td>Appears in SPM Measure 2 (above) but has no duration figure. The LSA omits SO housing outcomes that the SPM includes.</td></tr>
+          <tr><td class="type">PH – OPH / PH only<span>Types 9, 10</span></td><td><span class="tag tag-partial">Folded in</span></td><td>SPM merges OPH into the PH category; the LSA excludes it. No standalone figure.</td></tr>
+          <tr><td class="type">Services Only · Day Shelter<span>Types 6, 11</span></td><td><span class="tag tag-none">Nothing</span></td><td>Outside both national duration frameworks.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>If you're computing this yourself</h2>
+    <ul>
+      <li><strong>Report distributions, not means, if you want to compare to national.</strong> HUD's buckets are 7 days, 1 month, 3, 6, 12, 18 months, 2 years, 3 years. Matching them costs nothing and makes your figures directly comparable to the AHAR exhibits above.</li>
+      <li><strong>Pick your seven-day rule deliberately.</strong> There are three in play — LSA continuity (&lt;7 days), the chronic-homelessness break (≥7 consecutive nights), and the AHAR return threshold (14 days). They are not interchangeable.</li>
+      <li><strong>Decide between entry-to-entry and exit-to-entry gaps.</strong> Both go negative wherever enrollments legitimately overlap, which they do for CE; exit-to-entry additionally breaks on open enrollments with no exit date.</li>
+      <li><strong>Mirror LSA logic for anything longitudinal.</strong> Household-level, RRH and PSH kept separate, sub-week gaps tolerated — closer to what a client timeline wants than SPM's person-level contiguous-days rule.</li>
+      <li><strong>Expect a quarter of your RRH clients to also show a shelter enrollment</strong> in the same year, and about 6% of PSH clients likewise. If your data shows far less, suspect a join problem before concluding your system is unusual.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <p class="eyebrow">Sources</p>
+    <ol>
+      <li>HUD USER — <a href="https://www.huduser.gov/portal/sites/default/files/pdf/AHAR-Part-2-2022.pdf">2022 AHAR Part 2: Annual Estimates of Sheltered Homelessness</a>, published Aug 2024. Length-of-stay figures from Exhibits 2.10, 3.11, 4.10, 5.9, 6.10, 7.10 and 8.8; program-combination figures from Exhibits 1.9, 7.9 and 8.7.</li>
+      <li>HUD Exchange — <a href="https://www.hudexchange.info/resource/5691/system-performance-measures-data-since-fy-2015/">CoC System Performance Measures Data</a>. Measure 1 and Measure 2 tables above computed directly from this workbook across FY2019–FY2024.</li>
+      <li>HUD Exchange — <a href="https://files.hudexchange.info/resources/documents/Preparing-for-the-LSA-Guidance-on-Common-Data-Quality-Issues.pdf">Preparing for the LSA: Guidance on Common Data Quality Issues</a> (overlap rules, 1% tolerance).</li>
+      <li>HUD Exchange — <a href="https://files.hudexchange.info/resources/documents/quick-reference-differences-between-lsa-and-spm-reporting-logic.pdf">Quick Reference: Differences between LSA and SPM Reporting Logic</a> (seven-day rule vs. contiguous dates; household vs. person).</li>
+      <li>HUD — <a href="https://files.hudexchange.info/resources/documents/Stella-P-Insights-and-Action-Steps-Guide.pdf">Stella P Insights and Action Steps Guide</a> and the Stella Performance Glossary (days homeless, system pathways, longstayer thresholds).</li>
+      <li>HUD Exchange — <a href="https://www.hudexchange.info/sites/onecpd/assets/File/CoC-System-Performance-Measure1-Video-Transcript.pdf">Length of Time Persons Remain Homeless</a> (Measure 1a/1b construction).</li>
+      <li>HUD Exchange — <a href="https://files.hudexchange.info/resources/documents/CoC-Program-HMIS-Manual.pdf">CoC Program HMIS Manual</a> (project start/exit definitions; CE as a system-level process).</li>
+      <li>HUD USER — <a href="https://www.huduser.gov/portal/sites/default/files/pdf/Understanding-Rapid-Re-housing.pdf">Understanding Rapid Re-housing</a> and Urban Institute, <a href="https://www.urban.org/sites/default/files/publication/54201/2000265-Rapid-Re-housing-What-the-Research-Says.pdf">Rapid Re-housing: What the Research Says</a> (earlier study-level RRH timing evidence).</li>
+    </ol>
+  </footer>
+
+</div>

@@ -1,0 +1,22 @@
+---
+title: "Sales Report"
+format: html
+params:
+  dataset: "data/north.csv"
+  min_sales: 0
+---
+
+```{r}
+#| echo: false
+#| message: false
+df <- read.csv(params$dataset)
+df <- df[df$sales >= params$min_sales, ]
+```
+
+Source: `r params$dataset` — `r nrow(df)` rows above `r params$min_sales`.
+
+```{r}
+#| echo: false
+knitr::kable(df)
+barplot(df$sales, names.arg = df$month, main = unique(df$region))
+```

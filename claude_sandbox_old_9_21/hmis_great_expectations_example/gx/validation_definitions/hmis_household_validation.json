@@ -1,0 +1,22 @@
+{
+  "data": {
+    "asset": {
+      "id": "efeb0f30-813d-44b4-91c3-a97fff134a3a",
+      "name": "household"
+    },
+    "batch_definition": {
+      "id": "33b5c391-780b-474d-846b-48e8b9d147a6",
+      "name": "household_whole_table"
+    },
+    "datasource": {
+      "id": "e9941b7f-0cd9-4a42-9718-bca1420e907d",
+      "name": "hmis_export"
+    }
+  },
+  "id": "fa4d5d7a-cf04-42ba-86f0-ded7d37aeac4",
+  "name": "hmis_household_validation",
+  "suite": {
+    "id": "175832a8-0517-4de8-8325-a1d03e05455a",
+    "name": "hmis_household"
+  }
+}

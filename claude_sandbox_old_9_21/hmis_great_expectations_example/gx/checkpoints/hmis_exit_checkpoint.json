@@ -1,0 +1,23 @@
+{
+  "actions": [
+    {
+      "name": "update_data_docs",
+      "site_names": [],
+      "type": "update_data_docs"
+    }
+  ],
+  "id": "738b7602-d2d6-4135-9233-eaa59ee492e2",
+  "name": "hmis_exit_checkpoint",
+  "result_format": {
+    "result_format": "COMPLETE",
+    "unexpected_index_column_names": [
+      "ExitID"
+    ]
+  },
+  "validation_definitions": [
+    {
+      "id": "47bd674f-581b-4976-9021-30bd121c0764",
+      "name": "hmis_exit_validation"
+    }
+  ]
+}

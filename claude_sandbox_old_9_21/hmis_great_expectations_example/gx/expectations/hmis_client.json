@@ -1,0 +1,502 @@
+{
+  "expectations": [
+    {
+      "description": "Client.csv has the required HMIS CSV columns",
+      "id": "e3e4395d-d0c4-453b-a31a-c019ec97d85c",
+      "kwargs": {
+        "column_set": [
+          "PersonalID",
+          "FirstName",
+          "LastName",
+          "NameDataQuality",
+          "SSN",
+          "SSNDataQuality",
+          "DOB",
+          "DOBDataQuality",
+          "AmIndAKNative",
+          "Asian",
+          "BlackAfAmerican",
+          "HispanicLatinaeo",
+          "MidEastNAfrican",
+          "NativeHIPacific",
+          "White",
+          "RaceNone",
+          "VeteranStatus",
+          "DateCreated"
+        ],
+        "exact_match": false
+      },
+      "meta": {},
+      "severity": "critical",
+      "type": "expect_table_columns_to_match_set"
+    },
+    {
+      "description": "Every client has a PersonalID",
+      "id": "4753fcbd-f645-4b3b-92e4-0c8eb5fbb148",
+      "kwargs": {
+        "column": "PersonalID"
+      },
+      "meta": {},
+      "severity": "critical",
+      "type": "expect_column_values_to_not_be_null"
+    },
+    {
+      "description": "PersonalID is unique (no duplicate client rows)",
+      "id": "28940cda-2e8b-4dde-87b9-db8d01db85fe",
+      "kwargs": {
+        "column": "PersonalID"
+      },
+      "meta": {},
+      "severity": "critical",
+      "type": "expect_column_values_to_be_unique"
+    },
+    {
+      "description": "NameDataQuality contains only valid HUD response codes",
+      "id": "f5cdaf18-b125-421d-9036-e448f5f1c763",
+      "kwargs": {
+        "column": "NameDataQuality",
+        "value_set": [
+          1,
+          2,
+          8,
+          9,
+          99
+        ]
+      },
+      "meta": {
+        "data_element": "3.01 Name",
+        "hud_reference": "APR Q6a"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_in_set"
+    },
+    {
+      "description": "First name present when Name DQ = full name",
+      "id": "1c19db1f-98c3-4219-8ecb-beaad65f3938",
+      "kwargs": {
+        "column": "FirstName",
+        "row_condition": {
+          "column": {
+            "name": "NameDataQuality"
+          },
+          "operator": "==",
+          "parameter": 1,
+          "type": "comparison"
+        }
+      },
+      "meta": {
+        "data_element": "3.01 Name",
+        "hud_reference": "APR Q6a"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_not_be_null"
+    },
+    {
+      "description": "Last name present when Name DQ = full name",
+      "id": "27040759-30c8-45b0-9619-81b9e13615ec",
+      "kwargs": {
+        "column": "LastName",
+        "row_condition": {
+          "column": {
+            "name": "NameDataQuality"
+          },
+          "operator": "==",
+          "parameter": 1,
+          "type": "comparison"
+        }
+      },
+      "meta": {
+        "data_element": "3.01 Name",
+        "hud_reference": "APR Q6a"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_not_be_null"
+    },
+    {
+      "description": "At least 95% of NameDataQuality responses are known (not 8/9/99)",
+      "id": "29257cba-5ece-4a90-84eb-43395f77b636",
+      "kwargs": {
+        "column": "NameDataQuality",
+        "mostly": 0.95,
+        "value_set": [
+          8,
+          9,
+          99
+        ]
+      },
+      "meta": {
+        "data_element": "3.01 Name",
+        "hud_reference": "APR Q6a"
+      },
+      "severity": "warning",
+      "type": "expect_column_values_to_not_be_in_set"
+    },
+    {
+      "description": "SSNDataQuality contains only valid HUD response codes",
+      "id": "6a384130-65fe-4051-b725-9173e3c82760",
+      "kwargs": {
+        "column": "SSNDataQuality",
+        "value_set": [
+          1,
+          2,
+          8,
+          9,
+          99
+        ]
+      },
+      "meta": {
+        "data_element": "3.02 SSN",
+        "hud_reference": "APR Q6a"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_in_set"
+    },
+    {
+      "description": "Full SSN follows SSA rules (9 digits; area not 000/666/9xx; group not 00; serial not 0000)",
+      "id": "200a0575-c481-4810-bbd6-b6ff29365ddc",
+      "kwargs": {
+        "column": "SSN",
+        "regex": "^(?!000|666|9)\\d{3}(?!00)\\d{2}(?!0000)\\d{4}$",
+        "row_condition": {
+          "column": {
+            "name": "SSNDataQuality"
+          },
+          "operator": "==",
+          "parameter": 1,
+          "type": "comparison"
+        }
+      },
+      "meta": {
+        "data_element": "3.02 SSN",
+        "hud_reference": "APR Q6a"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_match_regex"
+    },
+    {
+      "description": "Full SSN is not a placeholder (111111111, 123456789, ...)",
+      "id": "c31912c7-a8e7-4394-9770-b1d90e2b6a0b",
+      "kwargs": {
+        "column": "SSN",
+        "row_condition": {
+          "column": {
+            "name": "SSNDataQuality"
+          },
+          "operator": "==",
+          "parameter": 1,
+          "type": "comparison"
+        },
+        "value_set": [
+          "000000000",
+          "111111111",
+          "222222222",
+          "333333333",
+          "444444444",
+          "555555555",
+          "666666666",
+          "777777777",
+          "888888888",
+          "999999999",
+          "123456789",
+          "987654321"
+        ]
+      },
+      "meta": {
+        "data_element": "3.02 SSN",
+        "hud_reference": "APR Q6a"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_not_be_in_set"
+    },
+    {
+      "description": "At least 95% of SSNDataQuality responses are known (not 8/9/99)",
+      "id": "69060718-d727-4d1b-a067-5bb7281581b0",
+      "kwargs": {
+        "column": "SSNDataQuality",
+        "mostly": 0.95,
+        "value_set": [
+          8,
+          9,
+          99
+        ]
+      },
+      "meta": {
+        "data_element": "3.02 SSN",
+        "hud_reference": "APR Q6a"
+      },
+      "severity": "warning",
+      "type": "expect_column_values_to_not_be_in_set"
+    },
+    {
+      "description": "DOBDataQuality contains only valid HUD response codes",
+      "id": "18b8e6d6-7341-4569-9833-395ddec51588",
+      "kwargs": {
+        "column": "DOBDataQuality",
+        "value_set": [
+          1,
+          2,
+          8,
+          9,
+          99
+        ]
+      },
+      "meta": {
+        "data_element": "3.03 DOB",
+        "hud_reference": "APR Q6a"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_in_set"
+    },
+    {
+      "description": "DOB present when DOB DQ = full DOB",
+      "id": "cc6fcdaf-84f5-4e34-9646-d9b8f558e946",
+      "kwargs": {
+        "column": "DOB",
+        "row_condition": {
+          "column": {
+            "name": "DOBDataQuality"
+          },
+          "operator": "==",
+          "parameter": 1,
+          "type": "comparison"
+        }
+      },
+      "meta": {
+        "data_element": "3.03 DOB",
+        "hud_reference": "APR Q6a"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_not_be_null"
+    },
+    {
+      "description": "DOB on or after 1915-01-01 and not in the future",
+      "id": "b3a24666-96cd-48d6-886a-fe3d2e2a604a",
+      "kwargs": {
+        "column": "DOB",
+        "max_value": "2026-09-01T00:00:00",
+        "min_value": "1915-01-01T00:00:00"
+      },
+      "meta": {
+        "data_element": "3.03 DOB",
+        "hud_reference": "APR Q6a"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_between"
+    },
+    {
+      "description": "At least 95% of DOBDataQuality responses are known (not 8/9/99)",
+      "id": "22246b34-3e53-43a7-8214-0219cae46f02",
+      "kwargs": {
+        "column": "DOBDataQuality",
+        "mostly": 0.95,
+        "value_set": [
+          8,
+          9,
+          99
+        ]
+      },
+      "meta": {
+        "data_element": "3.03 DOB",
+        "hud_reference": "APR Q6a"
+      },
+      "severity": "warning",
+      "type": "expect_column_values_to_not_be_in_set"
+    },
+    {
+      "description": "AmIndAKNative contains only valid HUD response codes",
+      "id": "275fc391-823b-4e90-ac68-cdca9b7d7233",
+      "kwargs": {
+        "column": "AmIndAKNative",
+        "value_set": [
+          0,
+          1
+        ]
+      },
+      "meta": {
+        "data_element": "3.04 Race and Ethnicity",
+        "hud_reference": "APR Q6a"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_in_set"
+    },
+    {
+      "description": "Asian contains only valid HUD response codes",
+      "id": "cdfa526b-444a-4ab4-885a-155a5a4c87e2",
+      "kwargs": {
+        "column": "Asian",
+        "value_set": [
+          0,
+          1
+        ]
+      },
+      "meta": {
+        "data_element": "3.04 Race and Ethnicity",
+        "hud_reference": "APR Q6a"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_in_set"
+    },
+    {
+      "description": "BlackAfAmerican contains only valid HUD response codes",
+      "id": "93f8ef2a-8053-4ec4-a05c-42762707fbe3",
+      "kwargs": {
+        "column": "BlackAfAmerican",
+        "value_set": [
+          0,
+          1
+        ]
+      },
+      "meta": {
+        "data_element": "3.04 Race and Ethnicity",
+        "hud_reference": "APR Q6a"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_in_set"
+    },
+    {
+      "description": "HispanicLatinaeo contains only valid HUD response codes",
+      "id": "a319db4f-1584-4c8a-a40d-06da6d9ad2a5",
+      "kwargs": {
+        "column": "HispanicLatinaeo",
+        "value_set": [
+          0,
+          1
+        ]
+      },
+      "meta": {
+        "data_element": "3.04 Race and Ethnicity",
+        "hud_reference": "APR Q6a"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_in_set"
+    },
+    {
+      "description": "MidEastNAfrican contains only valid HUD response codes",
+      "id": "2855d822-162f-47d2-8424-afe6ef101a1c",
+      "kwargs": {
+        "column": "MidEastNAfrican",
+        "value_set": [
+          0,
+          1
+        ]
+      },
+      "meta": {
+        "data_element": "3.04 Race and Ethnicity",
+        "hud_reference": "APR Q6a"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_in_set"
+    },
+    {
+      "description": "NativeHIPacific contains only valid HUD response codes",
+      "id": "e52e0aa4-b255-45c5-ad61-e61258304572",
+      "kwargs": {
+        "column": "NativeHIPacific",
+        "value_set": [
+          0,
+          1
+        ]
+      },
+      "meta": {
+        "data_element": "3.04 Race and Ethnicity",
+        "hud_reference": "APR Q6a"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_in_set"
+    },
+    {
+      "description": "White contains only valid HUD response codes",
+      "id": "25104586-5263-493e-8b8a-027c1aa310ae",
+      "kwargs": {
+        "column": "White",
+        "value_set": [
+          0,
+          1
+        ]
+      },
+      "meta": {
+        "data_element": "3.04 Race and Ethnicity",
+        "hud_reference": "APR Q6a"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_in_set"
+    },
+    {
+      "description": "RaceNone contains only valid HUD response codes",
+      "id": "735472e3-1c8e-4f60-9c9b-2f6f8a6f52db",
+      "kwargs": {
+        "column": "RaceNone",
+        "value_set": [
+          8,
+          9,
+          99
+        ]
+      },
+      "meta": {
+        "data_element": "3.04 Race and Ethnicity",
+        "hud_reference": "APR Q6a"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_in_set"
+    },
+    {
+      "description": "At least one race/ethnicity selected, or RaceNone = 8/9/99",
+      "id": "6af219d0-af0c-4250-93e3-3630f8c18884",
+      "kwargs": {
+        "column": "RaceResponseCount",
+        "min_value": 1.0
+      },
+      "meta": {
+        "data_element": "3.04 Race and Ethnicity",
+        "hud_reference": "APR Q6a"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_between"
+    },
+    {
+      "description": "VeteranStatus contains only valid HUD response codes",
+      "id": "caaa2a4b-97fa-4a0d-85d2-c83d3c7dbc4e",
+      "kwargs": {
+        "column": "VeteranStatus",
+        "value_set": [
+          0,
+          1,
+          8,
+          9,
+          99
+        ]
+      },
+      "meta": {
+        "data_element": "3.07 Veteran Status",
+        "hud_reference": "APR Q6b"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_in_set"
+    },
+    {
+      "description": "At least 95% of VeteranStatus responses are known (not 8/9/99)",
+      "id": "08f527d2-fb32-4df3-a8f1-a419b747d0f4",
+      "kwargs": {
+        "column": "VeteranStatus",
+        "mostly": 0.95,
+        "value_set": [
+          8,
+          9,
+          99
+        ]
+      },
+      "meta": {
+        "data_element": "3.07 Veteran Status",
+        "hud_reference": "APR Q6b"
+      },
+      "severity": "warning",
+      "type": "expect_column_values_to_not_be_in_set"
+    }
+  ],
+  "id": "573a2648-e0e1-447f-a7e1-ee4a58f40581",
+  "meta": {
+    "great_expectations_version": "1.23.0"
+  },
+  "name": "hmis_client",
+  "notes": null
+}

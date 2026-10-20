@@ -1,0 +1,20 @@
+table,defect,rows
+Client,Full SSN breaks SSA format rules,4
+Client,Full SSN is a placeholder,2
+Client,DOB before 1915-01-01,3
+Client,Name DQ = full but FirstName blank,3
+Client,No race/ethnicity and RaceNone blank,4
+Client,Invalid VeteranStatus code (7),2
+Client,Child recorded as veteran,2
+Client,Duplicate PersonalID (2 IDs x 2 rows),4
+Enrollment,PersonalID not in Client.csv,3
+Enrollment,ProjectID not in Project.csv,2
+Enrollment,Move-in date before project start,3
+Enrollment,Household with no head of household,3
+Enrollment,Household with two heads of household,2
+Enrollment,Malformed EnrollmentCoC,3
+Enrollment,Project start date in the future,2
+Exit,Exit date before project start,4
+Exit,PersonalID doesn't match the enrollment,2
+Exit,Duplicate exit for one enrollment (1 ID x 2 rows),2
+Exit,EnrollmentID not in Enrollment.csv,2

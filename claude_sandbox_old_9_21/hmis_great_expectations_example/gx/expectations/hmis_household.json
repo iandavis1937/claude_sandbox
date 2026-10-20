@@ -1,0 +1,40 @@
+{
+  "expectations": [
+    {
+      "description": "Each household has exactly one head of household",
+      "id": "25ae83e5-2906-4c0b-93aa-289e6f026aff",
+      "kwargs": {
+        "column": "HoHCount",
+        "max_value": 1.0,
+        "min_value": 1.0
+      },
+      "meta": {
+        "data_element": "3.15 Relationship to HoH",
+        "hud_reference": "APR Q6b"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_between"
+    },
+    {
+      "description": "All household members are enrolled in the same project",
+      "id": "ee9cfd48-6c6a-46ee-92d1-d3d6a4087e23",
+      "kwargs": {
+        "column": "ProjectCount",
+        "max_value": 1.0,
+        "min_value": 1.0
+      },
+      "meta": {
+        "data_element": "Household",
+        "hud_reference": "Integrity"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_between"
+    }
+  ],
+  "id": "175832a8-0517-4de8-8325-a1d03e05455a",
+  "meta": {
+    "great_expectations_version": "1.23.0"
+  },
+  "name": "hmis_household",
+  "notes": null
+}

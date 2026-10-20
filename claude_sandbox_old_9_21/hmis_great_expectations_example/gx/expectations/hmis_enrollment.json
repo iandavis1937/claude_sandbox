@@ -1,0 +1,423 @@
+{
+  "expectations": [
+    {
+      "description": "Every enrollment has an EnrollmentID",
+      "id": "806e7b70-754a-49ef-9d30-bbd439411fb5",
+      "kwargs": {
+        "column": "EnrollmentID"
+      },
+      "meta": {},
+      "severity": "critical",
+      "type": "expect_column_values_to_not_be_null"
+    },
+    {
+      "description": "EnrollmentID is unique",
+      "id": "7dc6866a-0143-4bb5-846c-d8cc875d59fe",
+      "kwargs": {
+        "column": "EnrollmentID"
+      },
+      "meta": {},
+      "severity": "critical",
+      "type": "expect_column_values_to_be_unique"
+    },
+    {
+      "description": "Enrollment.PersonalID exists in Client.csv",
+      "id": "a20b9674-e223-4912-adad-de37ef78644f",
+      "kwargs": {
+        "column": "HasClientRecord",
+        "value_set": [
+          true
+        ]
+      },
+      "meta": {
+        "data_element": "Enrollment -> Client",
+        "hud_reference": "Integrity"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_in_set"
+    },
+    {
+      "description": "Enrollment.ProjectID exists in Project.csv",
+      "id": "d13637a5-765b-4ee4-8bd0-8dae48eb6a6f",
+      "kwargs": {
+        "column": "HasProjectRecord",
+        "value_set": [
+          true
+        ]
+      },
+      "meta": {
+        "data_element": "Enrollment -> Project",
+        "hud_reference": "Integrity"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_in_set"
+    },
+    {
+      "description": "Project start date present",
+      "id": "f7f04ae4-6a8a-4df1-9239-377fc3196eda",
+      "kwargs": {
+        "column": "EntryDate"
+      },
+      "meta": {
+        "data_element": "3.10 Project Start Date",
+        "hud_reference": "APR Q6b"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_not_be_null"
+    },
+    {
+      "description": "Project start date is not in the future",
+      "id": "fc951be5-ae48-414e-b746-18498022330d",
+      "kwargs": {
+        "column": "EntryDate",
+        "max_value": "2026-09-01T00:00:00"
+      },
+      "meta": {
+        "data_element": "3.10 Project Start Date",
+        "hud_reference": "APR Q6b"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_between"
+    },
+    {
+      "description": "DOB is before project start and age at entry is plausible",
+      "id": "f75bd985-0e81-459a-979f-94570d9b2287",
+      "kwargs": {
+        "column": "AgeAtEntry",
+        "max_value": 105.0,
+        "min_value": 0.0
+      },
+      "meta": {
+        "data_element": "3.03 DOB",
+        "hud_reference": "APR Q6a"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_between"
+    },
+    {
+      "description": "Exit date on or after project start",
+      "id": "12400c61-ea98-4798-b2ff-4b1bb062102e",
+      "kwargs": {
+        "column_A": "ExitDate",
+        "column_B": "EntryDate",
+        "ignore_row_if": "either_value_is_missing",
+        "or_equal": true
+      },
+      "meta": {
+        "data_element": "3.11 Project Exit Date",
+        "hud_reference": "APR Q6b"
+      },
+      "severity": "critical",
+      "type": "expect_column_pair_values_a_to_be_greater_than_b"
+    },
+    {
+      "description": "Move-in date on or after project start",
+      "id": "9f86af6c-b7ab-4251-a478-9925de45af1f",
+      "kwargs": {
+        "column_A": "MoveInDate",
+        "column_B": "EntryDate",
+        "ignore_row_if": "either_value_is_missing",
+        "or_equal": true
+      },
+      "meta": {
+        "data_element": "3.20 Housing Move-in Date",
+        "hud_reference": "APR Q6b"
+      },
+      "severity": "critical",
+      "type": "expect_column_pair_values_a_to_be_greater_than_b"
+    },
+    {
+      "description": "Move-in date on or before exit",
+      "id": "668d10d0-cb0e-444f-a491-788ecc4b7f14",
+      "kwargs": {
+        "column_A": "ExitDate",
+        "column_B": "MoveInDate",
+        "ignore_row_if": "either_value_is_missing",
+        "or_equal": true
+      },
+      "meta": {
+        "data_element": "3.20 Housing Move-in Date",
+        "hud_reference": "APR Q6b"
+      },
+      "severity": "critical",
+      "type": "expect_column_pair_values_a_to_be_greater_than_b"
+    },
+    {
+      "description": "Move-in date is only recorded in PH projects",
+      "id": "679f1e5d-dacf-4bb5-8daf-a7d54a196821",
+      "kwargs": {
+        "column": "MoveInDate",
+        "row_condition": {
+          "column": {
+            "name": "IsPHProject"
+          },
+          "operator": "==",
+          "parameter": false,
+          "type": "comparison"
+        }
+      },
+      "meta": {
+        "data_element": "3.20 Housing Move-in Date",
+        "hud_reference": "APR Q6b"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_null"
+    },
+    {
+      "description": "RelationshipToHoH contains only valid HUD response codes",
+      "id": "ead94fab-b0ca-4ec1-aefa-0d57aacbc50d",
+      "kwargs": {
+        "column": "RelationshipToHoH",
+        "value_set": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          99
+        ]
+      },
+      "meta": {
+        "data_element": "3.15 Relationship to HoH",
+        "hud_reference": "APR Q6b"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_in_set"
+    },
+    {
+      "description": "At least 95% of RelationshipToHoH responses are known (not 99)",
+      "id": "bf9efc72-9cc3-445a-beb4-11b72789e4b0",
+      "kwargs": {
+        "column": "RelationshipToHoH",
+        "mostly": 0.95,
+        "value_set": [
+          99
+        ]
+      },
+      "meta": {
+        "data_element": "3.15 Relationship to HoH",
+        "hud_reference": "APR Q6b"
+      },
+      "severity": "warning",
+      "type": "expect_column_values_to_not_be_in_set"
+    },
+    {
+      "description": "Heads of household have an Enrollment CoC",
+      "id": "db0d7f1b-ddde-48ef-9049-455458101980",
+      "kwargs": {
+        "column": "EnrollmentCoC",
+        "row_condition": {
+          "column": {
+            "name": "RelationshipToHoH"
+          },
+          "operator": "==",
+          "parameter": 1,
+          "type": "comparison"
+        }
+      },
+      "meta": {
+        "data_element": "3.16 Enrollment CoC",
+        "hud_reference": "APR Q6b"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_not_be_null"
+    },
+    {
+      "description": "Enrollment CoC is a valid CoC code (e.g. NJ-500)",
+      "id": "e7fb297d-b832-428c-8004-b6c21771d194",
+      "kwargs": {
+        "column": "EnrollmentCoC",
+        "regex": "^[A-Z]{2}-\\d{3}$"
+      },
+      "meta": {
+        "data_element": "3.16 Enrollment CoC",
+        "hud_reference": "APR Q6b"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_match_regex"
+    },
+    {
+      "description": "Disabling condition present",
+      "id": "e9c2ee57-8d88-44d8-8dbf-321434f861d5",
+      "kwargs": {
+        "column": "DisablingCondition"
+      },
+      "meta": {
+        "data_element": "3.08 Disabling Condition",
+        "hud_reference": "APR Q6b"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_not_be_null"
+    },
+    {
+      "description": "DisablingCondition contains only valid HUD response codes",
+      "id": "89d44b77-f405-4144-b360-d05286637e9f",
+      "kwargs": {
+        "column": "DisablingCondition",
+        "value_set": [
+          0,
+          1,
+          8,
+          9,
+          99
+        ]
+      },
+      "meta": {
+        "data_element": "3.08 Disabling Condition",
+        "hud_reference": "APR Q6b"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_in_set"
+    },
+    {
+      "description": "At least 95% of DisablingCondition responses are known (not 8/9/99)",
+      "id": "c48b4894-7195-4fcd-92b8-14493254542f",
+      "kwargs": {
+        "column": "DisablingCondition",
+        "mostly": 0.95,
+        "value_set": [
+          8,
+          9,
+          99
+        ]
+      },
+      "meta": {
+        "data_element": "3.08 Disabling Condition",
+        "hud_reference": "APR Q6b"
+      },
+      "severity": "warning",
+      "type": "expect_column_values_to_not_be_in_set"
+    },
+    {
+      "description": "Children are not recorded as veterans",
+      "id": "7c2677f9-ae85-4ed5-aeb5-dacb56bbbece",
+      "kwargs": {
+        "column": "VeteranStatus",
+        "row_condition": {
+          "column": {
+            "name": "AgeAtEntry"
+          },
+          "operator": "<",
+          "parameter": 18,
+          "type": "comparison"
+        },
+        "value_set": [
+          1
+        ]
+      },
+      "meta": {
+        "data_element": "3.07 Veteran Status",
+        "hud_reference": "APR Q6b"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_not_be_in_set"
+    },
+    {
+      "description": "Exited clients have a destination",
+      "id": "c14aab5f-1aa0-4294-bacd-c5ef5dc944c5",
+      "kwargs": {
+        "column": "Destination",
+        "row_condition": {
+          "column": {
+            "name": "HasExit"
+          },
+          "operator": "==",
+          "parameter": true,
+          "type": "comparison"
+        }
+      },
+      "meta": {
+        "data_element": "3.12 Destination",
+        "hud_reference": "APR Q6c"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_not_be_null"
+    },
+    {
+      "description": "Destination contains only valid HUD response codes",
+      "id": "6527c760-f625-46cd-8b12-f017638713ca",
+      "kwargs": {
+        "column": "Destination",
+        "value_set": [
+          116,
+          101,
+          118,
+          215,
+          206,
+          207,
+          225,
+          204,
+          205,
+          302,
+          312,
+          313,
+          314,
+          327,
+          329,
+          332,
+          410,
+          411,
+          421,
+          422,
+          423,
+          426,
+          435,
+          17,
+          24,
+          30,
+          37,
+          8,
+          9,
+          99
+        ]
+      },
+      "meta": {
+        "data_element": "3.12 Destination",
+        "hud_reference": "APR Q6c"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_in_set"
+    },
+    {
+      "description": "At least 95% of Destination responses are known (not 8/9/30/99)",
+      "id": "55c1ae6d-2200-4401-91de-51b81c6908d0",
+      "kwargs": {
+        "column": "Destination",
+        "mostly": 0.95,
+        "value_set": [
+          8,
+          9,
+          30,
+          99
+        ]
+      },
+      "meta": {
+        "data_element": "3.12 Destination",
+        "hud_reference": "APR Q6c"
+      },
+      "severity": "warning",
+      "type": "expect_column_values_to_not_be_in_set"
+    },
+    {
+      "description": "At least 90% of project starts entered within 3 days",
+      "id": "3a8f1988-b093-4404-bfb2-896f585c27d6",
+      "kwargs": {
+        "column": "DaysToEntryRecord",
+        "max_value": 3.0,
+        "mostly": 0.9
+      },
+      "meta": {
+        "data_element": "Timeliness",
+        "hud_reference": "APR Q6e"
+      },
+      "severity": "warning",
+      "type": "expect_column_values_to_be_between"
+    }
+  ],
+  "id": "4b88adc5-8fc0-4f75-b8bc-810e916e7b60",
+  "meta": {
+    "great_expectations_version": "1.23.0"
+  },
+  "name": "hmis_enrollment",
+  "notes": null
+}

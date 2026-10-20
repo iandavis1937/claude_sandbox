@@ -1,0 +1,88 @@
+{
+  "expectations": [
+    {
+      "description": "Every exit has an ExitID",
+      "id": "5be3aff4-2b0f-4b0a-a299-8bf728d74660",
+      "kwargs": {
+        "column": "ExitID"
+      },
+      "meta": {},
+      "severity": "critical",
+      "type": "expect_column_values_to_not_be_null"
+    },
+    {
+      "description": "ExitID is unique",
+      "id": "da204b36-8dff-47d2-a5d0-0b40f5997254",
+      "kwargs": {
+        "column": "ExitID"
+      },
+      "meta": {},
+      "severity": "critical",
+      "type": "expect_column_values_to_be_unique"
+    },
+    {
+      "description": "At most one exit per enrollment",
+      "id": "dc8230be-b833-4d03-a47a-0489975a5af0",
+      "kwargs": {
+        "column": "EnrollmentID"
+      },
+      "meta": {
+        "data_element": "Exit -> Enrollment",
+        "hud_reference": "Integrity"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_unique"
+    },
+    {
+      "description": "Exit.EnrollmentID exists in Enrollment.csv",
+      "id": "476b3007-86a5-40c7-b7c3-12a022a0b38c",
+      "kwargs": {
+        "column": "HasEnrollmentRecord",
+        "value_set": [
+          true
+        ]
+      },
+      "meta": {
+        "data_element": "Exit -> Enrollment",
+        "hud_reference": "Integrity"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_in_set"
+    },
+    {
+      "description": "Exit.PersonalID matches the enrollment's PersonalID",
+      "id": "f6d75b83-fafd-4c2c-ac9e-79cc87ea10eb",
+      "kwargs": {
+        "column_A": "PersonalID",
+        "column_B": "EnrollmentPersonalID",
+        "ignore_row_if": "either_value_is_missing"
+      },
+      "meta": {
+        "data_element": "Exit -> Enrollment",
+        "hud_reference": "Integrity"
+      },
+      "severity": "critical",
+      "type": "expect_column_pair_values_to_be_equal"
+    },
+    {
+      "description": "Exit date is not in the future",
+      "id": "6cf589ad-1779-4197-b71e-5395e69b0389",
+      "kwargs": {
+        "column": "ExitDate",
+        "max_value": "2026-09-01T00:00:00"
+      },
+      "meta": {
+        "data_element": "3.11 Project Exit Date",
+        "hud_reference": "APR Q6b"
+      },
+      "severity": "critical",
+      "type": "expect_column_values_to_be_between"
+    }
+  ],
+  "id": "d5e21d95-6400-42ab-90cb-29f3ee6f667e",
+  "meta": {
+    "great_expectations_version": "1.23.0"
+  },
+  "name": "hmis_exit",
+  "notes": null
+}
