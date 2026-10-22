@@ -6,10 +6,13 @@ Usage:
     python scripts/pdf_tables_to_excel.py
     python scripts/pdf_tables_to_excel.py path/or/url/to/file.pdf -o out.xlsx
     python scripts/pdf_tables_to_excel.py --no-merge --pages 10-40
+    python scripts/pdf_tables_to_excel.py --union 1,4,10-20   # or --union all
 
 Output workbook:
-    All Tables    union of every table: data rows stacked, columns aligned by
-                  header name, tagged with source sheet, heading and pages
+    All Tables    union of the selected tables: data rows stacked, columns
+                  aligned by header name, tagged with source sheet, heading and
+                  pages. By default only tables whose first data row starts with
+                  "Element Name" are included; pick others with --union.
     Index        one row per table: sheet name, source pages, heading, size
     T001, T002... one sheet per table, preceded by its heading and pages
 
@@ -42,6 +45,9 @@ HEADING_RE = re.compile(r"^(\d+\.\d+[A-Z]?|[A-Z]\d{1,2}[A-Z]?)\s+[A-Z][\w&/(),'\
 # continuing across a page break.
 TOP_FRACTION = 0.20
 BOTTOM_FRACTION = 0.80
+
+# Default --union filter: first cell of the first non-header row.
+UNION_FIRST_CELL = "Element Name"
 
 HEADER_FILL = PatternFill("solid", fgColor="DDEBF7")
 
@@ -164,6 +170,25 @@ def table_headers(header_row):
     return names
 
 
+def select_union(tables, spec=None):
+    """0-based indices of the tables to union.
+
+    spec: None for the default filter (first data cell == UNION_FIRST_CELL),
+    "all", or a comma list of table numbers / ranges, e.g. "1,4,10-20" or "T001-T005".
+    """
+    if spec is None:
+        want = UNION_FIRST_CELL.casefold()
+        return [i for i, t in enumerate(tables)
+                if len(t["rows"]) > 1 and t["rows"][1][0].casefold() == want]
+    if spec.strip().lower() == "all":
+        return list(range(len(tables)))
+    picked = set()
+    for part in spec.split(","):
+        lo, _, hi = part.strip().upper().replace("T", "").partition("-")
+        picked.update(range(int(lo), int(hi or lo) + 1))
+    return [n - 1 for n in sorted(picked) if 1 <= n <= len(tables)]
+
+
 def write_union(ws, tables, sheet_names):
     """Stack every table's data rows into one sheet, aligning columns by header name."""
     columns = []
@@ -188,22 +213,22 @@ def write_union(ws, tables, sheet_names):
     autosize(ws)
 
 
-def write_workbook(tables, out_path):
+def write_workbook(tables, out_path, union_idx):
     for t in tables:
         t["pages"] = (f"{t['first_page'] + 1}" if t["first_page"] == t["last_page"]
                       else f"{t['first_page'] + 1}-{t['last_page'] + 1}")
     sheet_names = [f"T{i:03d}" for i in range(1, len(tables) + 1)]
 
     wb = Workbook()
-    write_union(wb.active, tables, sheet_names)
+    write_union(wb.active, [tables[i] for i in sorted(union_idx)], [sheet_names[i] for i in sorted(union_idx)])
     wb.active.title = "All Tables"
     index = wb.create_sheet("Index")
-    index.append(["Sheet", "Heading", "Pages", "Rows", "Columns"])
+    index.append(["Sheet", "Heading", "Pages", "Rows", "Columns", "In All Tables"])
     for cell in index[1]:
         cell.font = Font(bold=True)
         cell.fill = HEADER_FILL
 
-    for t, name in zip(tables, sheet_names):
+    for i, (t, name) in enumerate(zip(tables, sheet_names)):
         pages = t["pages"]
         n_cols = max(len(r) for r in t["rows"])
 
@@ -224,7 +249,8 @@ def write_workbook(tables, out_path):
         ws.freeze_panes = "A5"
         autosize(ws)
 
-        index.append([name, t["heading"], pages, len(t["rows"]), n_cols])
+        index.append([name, t["heading"], pages, len(t["rows"]), n_cols,
+                      "Yes" if i in union_idx else "No"])
         index.cell(row=index.max_row, column=1).hyperlink = f"#'{name}'!A1"
         index.cell(row=index.max_row, column=1).style = "Hyperlink"
 
@@ -239,14 +265,21 @@ def main(argv=None):
     ap.add_argument("-o", "--output", default="HMIS-Data-Dictionary-tables.xlsx")
     ap.add_argument("--pages", help="1-based page ranges to scan, e.g. '1-20,35'")
     ap.add_argument("--no-merge", action="store_true", help="don't stitch tables across page breaks")
+    ap.add_argument("--union", metavar="TABLES",
+                    help="tables to include in the 'All Tables' sheet: 'all' or numbers/ranges "
+                         "like '1,4,10-20' (default: tables whose first data row starts with "
+                         f"'{UNION_FIRST_CELL}')")
     args = ap.parse_args(argv)
 
     pdf_path = fetch_pdf(args.source)
     tables = extract_tables(pdf_path, args.pages, merge=not args.no_merge)
     if not tables:
         sys.exit("No tables found.")
-    write_workbook(tables, args.output)
-    print(f"Wrote {len(tables)} tables to {args.output}")
+    union_idx = select_union(tables, args.union)
+    if not union_idx:
+        print("Warning: no tables selected for the 'All Tables' sheet.", file=sys.stderr)
+    write_workbook(tables, args.output, set(union_idx))
+    print(f"Wrote {len(tables)} tables to {args.output} ({len(union_idx)} in 'All Tables')")
 
 
 if __name__ == "__main__":
