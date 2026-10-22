@@ -4,7 +4,7 @@ table with one row per field of each HMIS data element.
 
 Usage:
     python scripts/union_to_fields.py HMIS-Data-Dictionary-tables.xlsx
-    python scripts/union_to_fields.py union.xlsx -o fields.xlsx --sep "; "
+    python scripts/union_to_fields.py union.xlsx -o fields.xlsx --sep " | "
 
 Input: the first sheet of the workbook. Columns 1-3 are provenance (Table,
 Heading, Pages), column 4 holds the row label ('Element Name', 'Field 1 &
@@ -23,6 +23,12 @@ PDF quirks handled:
     - a label wrapped over several rows (later rows have no value) is rejoined
     - a value wrapped onto rows with no label is appended to the row above
     - several elements in one table are split at each 'Element Name' row
+
+List-like values (response options, project types, funders, dependency
+conditions) are separated with --sep, ";" plus a newline by default. A wrapped
+line counts as a new list item when it starts like one ("3: PH – ...",
+"HUD: CoC ...", "Pay for Success – ...", "[If Yes ..."); otherwise it is prose
+and is joined with a space.
 """
 import argparse
 import re
@@ -61,6 +67,15 @@ CANONICAL = {
 }
 
 
+DEFAULT_SEP = ";\n"
+
+# A wrapped value line that starts a new list item rather than continuing prose.
+LIST_ITEM_RE = re.compile(r"^(\d{1,3}: |[A-Z]{2,}: |[A-Z][\w/&]*( [\w/&]+){0,3} – |\[If\b)")
+
+# "0: Emergency Shelter 1: Day Shelter" packed into one cell.
+INLINE_ITEM_RE = re.compile(r" (?=\d{1,3}: [A-Z])")
+
+
 def text(v):
     return re.sub(r"\s+", " ", str(v)).strip() if v not in (None, "") else ""
 
@@ -70,6 +85,23 @@ def join(a, b):
     if not a or not b:
         return a or b
     return a + b if re.search(r"\S[-–]$", a) else f"{a} {b}"
+
+
+def join_item(a, b, sep):
+    """Join a wrapped value line: `sep` if it starts a new list item, else as prose."""
+    return f"{a}{sep}{b}" if a and b and LIST_ITEM_RE.match(b) else join(a, b)
+
+
+def split_inline(value, sep):
+    """Separate a numbered list run together in one cell, skipping '(subtype 2: ...)'."""
+    if not re.match(r"\d{1,3}: ", value):
+        return value
+    out, last = [], 0
+    for m in INLINE_ITEM_RE.finditer(value):
+        if value[last:m.start()].count("(") == value[last:m.start()].count(")"):
+            out.append(value[last:m.start()])
+            last = m.end()
+    return sep.join(out + [value[last:]])
 
 
 def key(label):
@@ -109,18 +141,18 @@ def starts_label(label, value, prev_label):
                             or bool(re.match(r"\d{4}revision", k)))
 
 
-def logical_rows(sheet_rows):
+def logical_rows(sheet_rows, sep=DEFAULT_SEP):
     """Rejoin wrapped labels/values. Yields dicts: table, pages, label, value, cells."""
     cur = None
     for r in sheet_rows:
-        label, value = text(r[3]), text(r[4])
+        label, value = text(r[3]), split_inline(text(r[4]), sep)
         cells = [text(v) for v in r[5:]]
         if not label and not value and not any(cells):
             continue
         same_table = cur is not None and r[0] == cur["table"]
         if same_table and (not label or not starts_label(label, value, cur["label"])):
             cur["label"] = join(cur["label"], label)  # wrapped label and/or value
-            cur["value"] = join(cur["value"], value)
+            cur["value"] = join_item(cur["value"], value, sep)
             continue
         if cur:
             yield cur
@@ -130,12 +162,12 @@ def logical_rows(sheet_rows):
         yield cur
 
 
-def parse_elements(rows, extra_names):
+def parse_elements(rows, extra_names, sep=DEFAULT_SEP):
     """Group logical rows into elements -> fields."""
     elements = []
     el = field = None
     section = ""
-    for row in logical_rows(rows):
+    for row in logical_rows(rows, sep):
         label, value, k = row["label"], row["value"], key(row["label"])
 
         if k == "elementname":
@@ -164,7 +196,7 @@ def parse_elements(rows, extra_names):
         elif FIELD_RE.match(label) and not el["in_attrs"]:
             field = new_field(el, label, value, section, row)
             if marks():
-                field["attrs"]["Applies To"] = ", ".join(marks())
+                field["attrs"]["Applies To"] = sep.join(marks())
         elif k == "header" and field is not None:
             field["responses"].append(f"[{value}]")  # group heading within a response list
         elif is_element_attr(k) or el["in_attrs"]:
@@ -241,7 +273,9 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("input", help="workbook whose first sheet is the 'All Tables' union")
     ap.add_argument("-o", "--output", help="default: <input>_by_field.xlsx")
-    ap.add_argument("--sep", default="\n", help="separator between collapsed responses (default: newline)")
+    ap.add_argument("--sep", default=DEFAULT_SEP,
+                    help="separator between list items such as responses and project types "
+                         "(default: ';' + newline; escapes like '\\n' are allowed)")
     args = ap.parse_args(argv)
 
     src = Path(args.input)
@@ -251,8 +285,9 @@ def main(argv=None):
     header = next(rows)
     extra_names = [text(h) for h in header[5:]]
 
-    elements = parse_elements(list(rows), extra_names)
-    records = to_records(elements, args.sep.encode().decode("unicode_escape"))
+    sep = args.sep.encode().decode("unicode_escape")
+    elements = parse_elements(list(rows), extra_names, sep)
+    records = to_records(elements, sep)
     columns = write_output(records, out)
     print(f"Wrote {len(records)} fields from {len(elements)} elements to {out}")
     print(f"Columns: {', '.join(columns)}")
