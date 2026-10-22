@@ -8,11 +8,16 @@ Usage:
     python scripts/pdf_tables_to_excel.py --no-merge --pages 10-40
     python scripts/pdf_tables_to_excel.py --union 1,4,10-20   # or --union all
 
+    # HMIS CSV Format Specifications: one table per CSV file, headed "Client.csv" or "Custom*.csv"
+    python scripts/pdf_tables_to_excel.py HMIS-CSV-Format-Specifications.pdf \
+        -o csv_fields.xlsx --heading-regex '^[\\w*]+\\.csv$' --union-header Name --compact
+
 Output workbook:
     All Tables    union of the selected tables: data rows stacked, columns
                   aligned by header name, tagged with source sheet, heading and
                   pages. By default only tables whose first data row starts with
-                  "Element Name" are included; pick others with --union.
+                  "Element Name" are included; pick others with --union, or by
+                  a header cell with --union-header.
     Index        one row per table: sheet name, source pages, heading, size
     T001, T002... one sheet per table, preceded by its heading and pages
 
@@ -20,7 +25,13 @@ Tables that run across a page break (same column count, starting at the top
 of the next page) are stitched into one table, and a repeated header row on
 the continuation page is dropped. Each table is labelled with the nearest
 data-element heading above it (e.g. "3.01 Name", "P4 Connection with SOAR"),
-carried forward from earlier pages when the page itself has none.
+carried forward from earlier pages when the page itself has none (change the
+pattern with --heading-regex). Text inside tables is never taken as a heading,
+and tables nested inside another table's cell are skipped.
+
+With --compact, columns that pdfplumber splits into sub-columns (common with
+doubled cell borders, as in the HMIS CSV spec) are folded back into the header
+column beside them.
 """
 import argparse
 import re
@@ -88,29 +99,72 @@ def clean_rows(rows):
     return [r for r in rows if any(r)]
 
 
-def find_heading(page, table_top):
-    """Closest data-element heading above `table_top` on this page, or None."""
+def inside(inner, outer, tol=1):
+    return (inner[0] >= outer[0] - tol and inner[1] >= outer[1] - tol
+            and inner[2] <= outer[2] + tol and inner[3] <= outer[3] + tol)
+
+
+def find_heading(page, table_top, table_boxes, heading_re):
+    """Closest heading above `table_top` on this page, ignoring text inside tables."""
     lines = page.extract_text_lines(strip=True) if hasattr(page, "extract_text_lines") else []
     heading = None
     for line in lines:
         if line["bottom"] > table_top:
             break
+        box = (line["x0"], line["top"], line["x1"], line["bottom"])
+        if any(inside(box, tb) for tb in table_boxes):
+            continue
         text = line["text"].strip()
-        if HEADING_RE.match(text):
+        if heading_re.match(text):
             heading = text
     return heading
 
 
-def extract_tables(pdf_path, page_spec=None, merge=True):
+def compact_columns(rows):
+    """Fold sub-columns into the header column beside them.
+
+    With doubled cell borders pdfplumber can split one visual column into
+    several, leaving the header text in one sub-column and the data one to its
+    left. Each column with data but no header joins an adjacent header column
+    (the right one first) unless that would put two different values in one
+    cell; identical text is fine, since some PDFs draw a cell's text twice.
+    """
+    n = max(len(r) for r in rows)
+    rows = [r + [""] * (n - len(r)) for r in rows]
+    header = rows[0]
+    groups = {j: [j] for j in range(n) if header[j]}
+
+    def text(r, cols):
+        return " ".join(dict.fromkeys(r[k] for k in cols if r[k]))
+
+    for j in range(n):
+        if header[j] or not any(r[j] for r in rows):
+            continue
+        for a in (j + 1, j - 1):
+            if a in groups and not any(r[j] and text(r, groups[a]) not in ("", r[j]) for r in rows):
+                groups[a].append(j)
+                break
+        else:
+            groups[j] = [j]  # keep as its own column
+    order = sorted(groups)
+    return [[text(r, groups[a]) for a in order] for r in rows]
+
+
+def extract_tables(pdf_path, page_spec=None, merge=True, heading_re=HEADING_RE, compact=False):
     tables = []
     last_heading = ""
     with pdfplumber.open(pdf_path) as pdf:
         for pno in parse_pages(page_spec, len(pdf.pages)):
             page = pdf.pages[pno]
-            found = sorted(page.find_tables(), key=lambda t: t.bbox[1])
+            found = page.find_tables()
+            # Drop tables nested in another table's cell (e.g. a boxed regex in a Notes cell).
+            found = [t for t in found
+                     if not any(o is not t and inside(t.bbox, o.bbox) for o in found)]
+            found.sort(key=lambda t: t.bbox[1])
+            boxes = [t.bbox for t in found]
             if not found:
                 # Still track headings so the next table gets the right label.
-                h = find_heading(page, page.height)
+                h = find_heading(page, page.height, boxes, heading_re)
                 last_heading = h or last_heading
                 continue
             for tbl in found:
@@ -118,7 +172,7 @@ def extract_tables(pdf_path, page_spec=None, merge=True):
                 if not rows:
                     continue
                 top, bottom = tbl.bbox[1], tbl.bbox[3]
-                heading = find_heading(page, top)
+                heading = find_heading(page, top, boxes, heading_re)
                 prev = tables[-1] if tables else None
                 is_continuation = (
                     merge
@@ -145,8 +199,11 @@ def extract_tables(pdf_path, page_spec=None, merge=True):
                     "rows": rows,
                 })
             # Headings below the last table on the page apply to the next page.
-            h = find_heading(page, page.height)
+            h = find_heading(page, page.height, boxes, heading_re)
             last_heading = h or last_heading
+    if compact:
+        for t in tables:
+            t["rows"] = compact_columns(t["rows"])
     return tables
 
 
@@ -170,12 +227,17 @@ def table_headers(header_row):
     return names
 
 
-def select_union(tables, spec=None):
+def select_union(tables, spec=None, header=None):
     """0-based indices of the tables to union.
 
     spec: None for the default filter (first data cell == UNION_FIRST_CELL),
     "all", or a comma list of table numbers / ranges, e.g. "1,4,10-20" or "T001-T005".
+    header: instead, pick tables whose header row has a cell equal to this text.
     """
+    if header is not None:
+        want = header.casefold()
+        return [i for i, t in enumerate(tables)
+                if any(c.casefold() == want for c in t["rows"][0])]
     if spec is None:
         want = UNION_FIRST_CELL.casefold()
         return [i for i, t in enumerate(tables)
@@ -193,9 +255,12 @@ def write_union(ws, tables, sheet_names):
     """Stack every table's data rows into one sheet, aligning columns by header name."""
     columns = []
     for t in tables:
+        prev = None
         for name in table_headers(t["rows"][0]):
             if name not in columns:
-                columns.append(name)
+                # Keep a new column next to its neighbour in this table's own order.
+                columns.insert(columns.index(prev) + 1 if prev else 0, name)
+            prev = name
     lead = ["Table", "Heading", "Pages"]
     ws.append(lead + columns)
     for cell in ws[1]:
@@ -269,13 +334,21 @@ def main(argv=None):
                     help="tables to include in the 'All Tables' sheet: 'all' or numbers/ranges "
                          "like '1,4,10-20' (default: tables whose first data row starts with "
                          f"'{UNION_FIRST_CELL}')")
+    ap.add_argument("--union-header", metavar="TEXT",
+                    help="union the tables whose header row has a cell equal to TEXT, e.g. 'Name'")
+    ap.add_argument("--heading-regex", default=HEADING_RE.pattern,
+                    help="pattern for the heading lines that label tables "
+                         "(default: HMIS data-element headings like '3.01 Name')")
+    ap.add_argument("--compact", action="store_true",
+                    help="fold sub-columns pdfplumber split off back into their header column")
     args = ap.parse_args(argv)
 
     pdf_path = fetch_pdf(args.source)
-    tables = extract_tables(pdf_path, args.pages, merge=not args.no_merge)
+    tables = extract_tables(pdf_path, args.pages, merge=not args.no_merge,
+                            heading_re=re.compile(args.heading_regex), compact=args.compact)
     if not tables:
         sys.exit("No tables found.")
-    union_idx = select_union(tables, args.union)
+    union_idx = select_union(tables, args.union, args.union_header)
     if not union_idx:
         print("Warning: no tables selected for the 'All Tables' sheet.", file=sys.stderr)
     write_workbook(tables, args.output, set(union_idx))
