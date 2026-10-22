@@ -14,14 +14,15 @@ whose names are given on the element's 'Element Name' row).
 
 Output columns (one row per 'Field N & Response(s)'):
     Element Name, Field Name, Responses   responses collapsed into one cell
-    Dependent A, Dependent B, ...         each dependent collapsed into one cell on
-                                          the row of the field it depends on: the
-                                          rest of its label ("Dependent to Field 6 &
-                                          Response 13"), its text, and its responses
+    Project Type Applicability
     <element attributes>                  Element Type, Funder: Program-Component,
                                           Collection Point, ... (repeated per field)
     <field attributes>                    Dependency Logic, Section, Applies To
     Field Label, Source Table, Pages      where the field came from
+    Dependent A, Dependent B, ...         each dependent collapsed into one cell on
+                                          the row of the field it depends on: the
+                                          rest of its label ("Dependent to Field 6 &
+                                          Response 13"), its text, and its responses
 
 PDF quirks handled:
     - a label wrapped over several rows (later rows have no value) is rejoined
@@ -297,8 +298,9 @@ def write_output(records, out_path):
     for rec in records:
         el_cols += [c for c in rec["_element"] if c not in el_cols]
         f_cols += [c for c in rec["_field"] if c not in f_cols]
-    columns = (["Element Name", "Field Name", "Responses"] + dep_cols + el_cols + f_cols
-               + ["Field Label", "Source Table", "Pages"])
+    lead = ["Element Name", "Field Name", "Responses", "Project Type Applicability"]
+    columns = (lead + [c for c in el_cols + f_cols if c not in lead]
+               + ["Field Label", "Source Table", "Pages"] + dep_cols)
 
     wb = Workbook()
     ws = wb.active
