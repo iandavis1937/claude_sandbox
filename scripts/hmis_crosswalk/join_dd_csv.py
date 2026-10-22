@@ -4,9 +4,9 @@ the HMIS CSV Format Specifications field list (pdf_tables_to_excel.py output)
 on DE#.
 
 Usage:
-    python scripts/join_dd_csv.py HUD_field_reqs_by_project_type_by_field.xlsx HMIS_CSV_fields.xlsx
-    python scripts/join_dd_csv.py dd_fields.xlsx csv_fields.xlsx -o joined.xlsx
-    python scripts/join_dd_csv.py dd_fields.xlsx csv_fields.xlsx --crosswalk HMIS_CSV_crosswalk.xlsx
+    python scripts/hmis_crosswalk/join_dd_csv.py HMIS_DD_fields.xlsx HMIS_CSV_fields.xlsx
+    python scripts/hmis_crosswalk/join_dd_csv.py dd_fields.xlsx csv_fields.xlsx -o joined.xlsx
+    python scripts/hmis_crosswalk/join_dd_csv.py dd_fields.xlsx csv_fields.xlsx --crosswalk HMIS_CSV_crosswalk.xlsx
 
 Inputs:
     dictionary  first sheet; one row per field with a 'DE#' column and

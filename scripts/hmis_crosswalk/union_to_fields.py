@@ -3,8 +3,8 @@ Pivot the 'All Tables' union sheet written by pdf_tables_to_excel.py into a
 table with one row per field of each HMIS data element.
 
 Usage:
-    python scripts/union_to_fields.py HMIS-Data-Dictionary-tables.xlsx
-    python scripts/union_to_fields.py union.xlsx -o fields.xlsx --sep " | "
+    python scripts/hmis_crosswalk/union_to_fields.py HMIS-Data-Dictionary-tables.xlsx
+    python scripts/hmis_crosswalk/union_to_fields.py union.xlsx -o fields.xlsx --sep " | "
 
 Input: the first sheet of the workbook. Columns 1-3 are provenance (Table,
 Heading, Pages), column 4 holds the row label ('Element Name', 'Field 1 &

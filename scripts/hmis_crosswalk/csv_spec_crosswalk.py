@@ -4,8 +4,8 @@ Dictionary element/field numbers, from the spec's own text, for the columns
 its DE# column does not cover. Feeds join_dd_csv.py --crosswalk.
 
 Usage:
-    python scripts/csv_spec_crosswalk.py HMIS-CSV-Format-Specifications.pdf HMIS_CSV_fields.xlsx
-    python scripts/csv_spec_crosswalk.py spec.pdf csv_fields.xlsx -o HMIS_CSV_crosswalk.xlsx
+    python scripts/hmis_crosswalk/csv_spec_crosswalk.py HMIS-CSV-Format-Specifications.pdf HMIS_CSV_fields.xlsx
+    python scripts/hmis_crosswalk/csv_spec_crosswalk.py spec.pdf csv_fields.xlsx -o HMIS_CSV_crosswalk.xlsx
 
 Inputs: the spec PDF, and its field list from
     pdf_tables_to_excel.py spec.pdf --heading-regex '^[\\w*]+\\.csv$' --union-header Name --compact

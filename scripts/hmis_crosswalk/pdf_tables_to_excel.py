@@ -3,13 +3,13 @@ Pull every table out of a PDF (default: the HUD HMIS Data Dictionary) into
 an Excel workbook.
 
 Usage:
-    python scripts/pdf_tables_to_excel.py
-    python scripts/pdf_tables_to_excel.py path/or/url/to/file.pdf -o out.xlsx
-    python scripts/pdf_tables_to_excel.py --no-merge --pages 10-40
-    python scripts/pdf_tables_to_excel.py --union 1,4,10-20   # or --union all
+    python scripts/hmis_crosswalk/pdf_tables_to_excel.py
+    python scripts/hmis_crosswalk/pdf_tables_to_excel.py path/or/url/to/file.pdf -o out.xlsx
+    python scripts/hmis_crosswalk/pdf_tables_to_excel.py --no-merge --pages 10-40
+    python scripts/hmis_crosswalk/pdf_tables_to_excel.py --union 1,4,10-20   # or --union all
 
     # HMIS CSV Format Specifications: one table per CSV file, headed "Client.csv" or "Custom*.csv"
-    python scripts/pdf_tables_to_excel.py HMIS-CSV-Format-Specifications.pdf \
+    python scripts/hmis_crosswalk/pdf_tables_to_excel.py HMIS-CSV-Format-Specifications.pdf \
         -o csv_fields.xlsx --heading-regex '^[\\w*]+\\.csv$' --union-header Name --compact
 
 Output workbook:
