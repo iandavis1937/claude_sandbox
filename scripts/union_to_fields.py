@@ -15,6 +15,9 @@ whose names are given on the element's 'Element Name' row).
 Output columns (one row per 'Field N & Response(s)'):
     Element Name, Field Name, Responses   responses collapsed into one cell
     Project Type Applicability
+    DE#                                   join key to the HMIS CSV Format
+                                          Specifications' DE# column (see below)
+    CSV                                   the CSV file(s) the element exports to
     <element attributes>                  Element Type, Funder: Program-Component,
                                           Collection Point, ... (repeated per field)
     <field attributes>                    Dependency Logic, Section, Applies To
@@ -29,6 +32,19 @@ PDF quirks handled:
     - a value wrapped onto rows with no label is appended to the row above
     - several elements in one table are split at each 'Element Name' row
 
+Join key (DE#): <element number>.<field number>, e.g. "2.02.6" for 2.02
+Project Information Field 6 (Project Type) or "R13.9" for R13 Family Critical
+Issues Field 9 - the same numbering the CSV spec's DE# column uses. Element
+numbers come from the "2.02 Project Information"-style headings in the input's
+Heading column (matched to the element by name, since that column can sit on
+the wrong table), with ELEMENT_NUMBERS supplying the elements no heading names.
+KEY_OVERRIDES holds the few places the spec numbers a field differently (e.g.
+"3.08" rather than "3.08.1"). Dependents are keyed <element>.<letter> in the
+CSV spec (e.g. "2.06.A"); they live in the Dependent columns here, not in DE#.
+Fields stored in the spec's long-format files (Disabilities.csv, Services.csv,
+the InformationDate/DateCreated columns, ...) have no DE# there, so DE# cannot
+join them.
+
 List-like values (response options, project types, funders, dependency
 conditions) are separated with --sep, ";" plus a newline by default. A wrapped
 line counts as a new list item when it starts like one ("3: PH – ...",
@@ -37,11 +53,12 @@ and is joined with a space.
 """
 import argparse
 import re
+import sys
 from collections import OrderedDict
 from pathlib import Path
 
 from openpyxl import Workbook, load_workbook
-from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 HEADER_FILL = PatternFill("solid", fgColor="DDEBF7")
@@ -80,6 +97,53 @@ CANONICAL = {
     "relationshiptopersonalidaclient": "Relationship to Personal ID (a client)",
 }
 
+
+# "2.02 Project Information", "3.917A Prior Living Situation", "R15 Commercial ..."
+ELEMENT_HEADING_RE = re.compile(r"^(\d+\.\d+|[A-Z]\d{1,2})[A-Z]?\s+(.+)$")
+
+# Element numbers for elements the input's headings don't name. Sources: the
+# HMIS CSV Format Specifications text (e.g. "Project.csv includes ... 2.02
+# Project Information", "V7 SSVF HP Targeting Criteria") except where noted.
+ELEMENT_NUMBERS = {
+    "Project Information": "2.02",
+    "Name": "3.01",
+    "Project Start Date": "3.10",
+    "Housing Move-In Date": "3.20",
+    "Chronic Health Condition": "4.07",
+    "Substance Use Disorder": "4.10",
+    "Coordinated Entry Assessment": "4.19",
+    "Coordinated Entry Event": "4.20",
+    "Project Identifier": "5.05",         # not in the CSV spec; follows 5.04 in the dictionary
+    "Personal Identifier": "5.08",
+    "Implementation Identifier": "5.10",  # not in the CSV spec; follows 5.09 in the dictionary
+    "Services Provided – PATH Funded": "P1",
+    "Referrals Provided PATH": "P2",
+    "RHY – BCP Status": "R2",
+    "RHY Service Connections": "R14",
+    "Safe and Appropriate Exit": "R19",
+    "Veterans Information": "V1",
+    "Services Provided – SSVF": "V2",
+    "Financial Assistance – SSVF": "V3",
+    "Percent of AMI (SSVF Eligibility)": "V4",
+    "HP Targeting Criteria": "V7",
+    "Services Provided – HOPWA": "W1",
+    "Financial Assistance – HOPWA": "W2",
+    "Medical Assistance": "W3",
+    "T-Cell (CD4) and Viral Load": "W4",
+}
+
+# "Field 6 & Responses" -> "6", "Field 2A – for Institutional Situations" -> "2A"
+FIELD_NUM_RE = re.compile(r"^Field\s*#?\s*(\d+[A-Z]?)\b")
+
+# Where the CSV spec's DE# differs from <element>.<field>.
+KEY_OVERRIDES = {
+    "3.08.1": "3.08",    # Enrollment.csv DisablingCondition: single-field element, no ".1"
+    "4.21.1": "4.21",    # Client.csv Sex
+    "V10.1": "V10",      # Enrollment.csv MentalHealthConsultation
+    "5.07.1": "5.07.01", # User.csv UserID is printed "5.07.01"
+    "W2.3": "W2",        # Services.csv FAAmount is keyed "W2 & V3.3"
+    "W3.2": "W3.3",      # IncomeBenefits.csv ADAP: the dictionary numbers it Field 2, the spec W3.3
+}
 
 DEFAULT_SEP = ";\n"
 
@@ -273,15 +337,52 @@ def new_field(el, label, name, section, row):
     return f
 
 
-def to_records(elements, sep):
+def name_key(name):
+    """Element name for matching: lower-case, no parentheticals or punctuation."""
+    return re.sub(r"[^a-z0-9]", "", re.sub(r"\(.*?\)", "", name.lower()))
+
+
+def harvest_element_numbers(sheet_rows):
+    """{name_key: element number} from 'N.NN Element Name' headings in column 2."""
+    found = {}
+    for r in sheet_rows:
+        m = ELEMENT_HEADING_RE.match(text(r[1]))
+        if m:
+            found.setdefault(name_key(m.group(2)), m.group(1))
+    return found
+
+
+def element_number(name, harvested):
+    overrides = {name_key(k): v for k, v in ELEMENT_NUMBERS.items()}
+    k = name_key(name)
+    if k in overrides:
+        return overrides[k]
+    if k in harvested:
+        return harvested[k]
+    # Headings can run on into following text ("5.04 Information Date Corrected ...").
+    return next((num for hk, num in harvested.items() if k and hk.startswith(k)), "")
+
+
+def de_number(el_num, field_num):
+    key = f"{el_num}.{field_num}"
+    return KEY_OVERRIDES.get(key, key)
+
+
+def to_records(elements, sep, harvested=None):
     records = []
     for el in elements:
+        el_num = element_number(el["name"], harvested or {})
+        if not el_num:
+            print(f"Warning: no element number for '{el['name']}'; add it to ELEMENT_NUMBERS",
+                  file=sys.stderr)
         for f in el["fields"] or [{"label": "", "name": "", "responses": [], "attrs": {},
                                    "table": el["table"], "pages": el["pages"]}]:
+            m = FIELD_NUM_RE.match(f["label"])
             records.append({
                 "Element Name": el["name"],
                 "Field Name": f["name"],
                 "Responses": sep.join(f["responses"]),
+                "DE#": de_number(el_num, m.group(1)) if el_num and m else "",
                 "_deps": f.get("deps", {}),
                 "_element": el["attrs"],
                 "_field": f["attrs"],
@@ -298,7 +399,7 @@ def write_output(records, out_path):
     for rec in records:
         el_cols += [c for c in rec["_element"] if c not in el_cols]
         f_cols += [c for c in rec["_field"] if c not in f_cols]
-    lead = ["Element Name", "Field Name", "Responses", "Project Type Applicability"]
+    lead = ["Element Name", "Field Name", "Responses", "Project Type Applicability", "DE#", "CSV"]
     columns = (lead + [c for c in el_cols + f_cols if c not in lead]
                + ["Field Label", "Source Table", "Pages"] + dep_cols)
 
@@ -313,9 +414,6 @@ def write_output(records, out_path):
     for cell in ws[1]:
         cell.font = Font(bold=True)
         cell.fill = HEADER_FILL
-    for row in ws.iter_rows(min_row=2):
-        for cell in row:
-            cell.alignment = Alignment(wrap_text=True, vertical="top")
     for i, c in enumerate(columns, 1):
         ws.column_dimensions[get_column_letter(i)].width = 45 if c in ("Responses", *dep_cols, *el_cols) else 28
     ws.freeze_panes = "C2"
@@ -341,8 +439,9 @@ def main(argv=None):
     extra_names = [text(h) for h in header[5:]]
 
     sep = args.sep.encode().decode("unicode_escape")
-    elements = parse_elements(list(rows), extra_names, sep)
-    records = to_records(elements, sep)
+    rows = list(rows)
+    elements = parse_elements(rows, extra_names, sep)
+    records = to_records(elements, sep, harvest_element_numbers(rows))
     columns = write_output(records, out)
     print(f"Wrote {len(records)} fields from {len(elements)} elements to {out}")
     print(f"Columns: {', '.join(columns)}")
