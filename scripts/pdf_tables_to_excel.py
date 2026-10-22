@@ -8,7 +8,9 @@ Usage:
     python scripts/pdf_tables_to_excel.py --no-merge --pages 10-40
 
 Output workbook:
-    Index         one row per table: sheet name, source pages, heading, size
+    All Tables    union of every table: data rows stacked, columns aligned by
+                  header name, tagged with source sheet, heading and pages
+    Index        one row per table: sheet name, source pages, heading, size
     T001, T002... one sheet per table, preceded by its heading and pages
 
 Tables that run across a page break (same column count, starting at the top
@@ -152,19 +154,57 @@ def autosize(ws, max_width=60):
         ws.column_dimensions[get_column_letter(col)].width = min(max(width + 2, 8), max_width)
 
 
+def table_headers(header_row):
+    """Header names for one table: blanks become 'Column N', repeats get a suffix."""
+    names, seen = [], {}
+    for i, h in enumerate(header_row, 1):
+        name = h or f"Column {i}"
+        seen[name] = seen.get(name, 0) + 1
+        names.append(name if seen[name] == 1 else f"{name} ({seen[name]})")
+    return names
+
+
+def write_union(ws, tables, sheet_names):
+    """Stack every table's data rows into one sheet, aligning columns by header name."""
+    columns = []
+    for t in tables:
+        for name in table_headers(t["rows"][0]):
+            if name not in columns:
+                columns.append(name)
+    lead = ["Table", "Heading", "Pages"]
+    ws.append(lead + columns)
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+        cell.fill = HEADER_FILL
+
+    for t, name in zip(tables, sheet_names):
+        headers = table_headers(t["rows"][0])
+        for row in t["rows"][1:]:
+            values = dict(zip(headers, row))
+            ws.append([name, t["heading"], t["pages"]] + [values.get(c, "") for c in columns])
+
+    ws.freeze_panes = "D2"
+    ws.auto_filter.ref = ws.dimensions
+    autosize(ws)
+
+
 def write_workbook(tables, out_path):
+    for t in tables:
+        t["pages"] = (f"{t['first_page'] + 1}" if t["first_page"] == t["last_page"]
+                      else f"{t['first_page'] + 1}-{t['last_page'] + 1}")
+    sheet_names = [f"T{i:03d}" for i in range(1, len(tables) + 1)]
+
     wb = Workbook()
-    index = wb.active
-    index.title = "Index"
+    write_union(wb.active, tables, sheet_names)
+    wb.active.title = "All Tables"
+    index = wb.create_sheet("Index")
     index.append(["Sheet", "Heading", "Pages", "Rows", "Columns"])
     for cell in index[1]:
         cell.font = Font(bold=True)
         cell.fill = HEADER_FILL
 
-    for i, t in enumerate(tables, 1):
-        name = f"T{i:03d}"
-        pages = (f"{t['first_page'] + 1}" if t["first_page"] == t["last_page"]
-                 else f"{t['first_page'] + 1}-{t['last_page'] + 1}")
+    for t, name in zip(tables, sheet_names):
+        pages = t["pages"]
         n_cols = max(len(r) for r in t["rows"])
 
         ws = wb.create_sheet(name)
